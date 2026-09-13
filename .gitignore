@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+third_party/engine/
+installer/output/
+dist/
+TestResults/

@@ -1,0 +1,380 @@
+<Window x:Class="MingalTunnel.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mingal Tunnel" Width="1080" Height="780" MinWidth="900" MinHeight="620"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource Canvas}"
+        FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}"
+        Icon="pack://application:,,,/assets/app.ico"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Background="{StaticResource HeaderGradient}" Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Image Source="pack://application:,,,/assets/app_logo.png" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" />
+                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Mingal Tunnel" FontSize="22" FontWeight="Bold" Foreground="White" />
+                    <TextBlock Text="Só os apps que você marcar passam pela VPN. O resto do PC fica na rede normal." Foreground="#FFE2F1" />
+                </StackPanel>
+                <Border Grid.Column="2" Background="#33FFFFFF" CornerRadius="16" Padding="12,7" Margin="0,0,14,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="11" Height="11" Fill="{Binding StatusBrush}" Stroke="White" StrokeThickness="1.5" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusTitle}" Foreground="White" FontWeight="SemiBold" Margin="8,0,0,0" />
+                    </StackPanel>
+                </Border>
+                <Button Grid.Column="3" Style="{StaticResource HeaderButton}" Content="{Binding ToggleText}" Command="{Binding ToggleTunnelCommand}" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Tabs -->
+        <TabControl Grid.Row="1" Margin="24,8,24,0" SelectedIndex="{Binding SelectedTab}">
+
+            <!-- Apps -->
+            <TabItem Header="Apps">
+                <Grid Margin="0,14,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="0.8*" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="1.4*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Caption}" Text="CONEXÃO" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="10" Height="10" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StatusTitle}" FontSize="17" FontWeight="SemiBold" Margin="8,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding StatusDetail}" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0">
+                                    <Run Text="Perfil:" /> <Run Text="{Binding ActiveProfileName, Mode=OneWay}" FontWeight="SemiBold" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Caption}" Text="LATÊNCIA PELA VPN" />
+                                <TextBlock Text="{Binding LatencyText}" FontSize="24" FontWeight="Bold" />
+                                <TextBlock Text="{Binding ProxyText}" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="4" Style="{StaticResource CardBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.ColumnSpan="2" Style="{StaticResource Caption}" Text="IP DE SAÍDA" />
+                                <TextBlock Grid.Row="1" Text="Pela VPN" Foreground="{StaticResource SubInk}" Margin="0,0,12,2" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding VpnIpText}" FontWeight="SemiBold" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="2" Text="Normal" Foreground="{StaticResource SubInk}" Margin="0,0,12,2" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DirectIpText}" FontWeight="SemiBold" FontFamily="Consolas" />
+                                <TextBlock Grid.Row="3" Grid.ColumnSpan="3" Text="{Binding IpVerdict}" Foreground="{Binding IpVerdictBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" />
+                                <Button Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Verificar"
+                                        Command="{Binding CheckIpCommand}" VerticalAlignment="Top"
+                                        ToolTip="Consulta um serviço de IP público duas vezes: uma pelo túnel e uma pela rede normal." />
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="{StaticResource WarnBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding IsNotAdmin, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource WarnText}" TextWrapping="Wrap"
+                                   Text="Rodando sem Administrador: dá pra configurar tudo, mas o túnel só liga com o Mingal Tunnel aberto como Administrador (o atalho do instalador já faz isso)." />
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{StaticResource DangerBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding HasKillSwitchBanner, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource DangerText}" TextWrapping="Wrap" Text="{Binding KillSwitchBanner}" />
+                    </Border>
+
+                    <DockPanel Grid.Row="3" Margin="0,14,0,10" LastChildFill="True">
+                        <Button Style="{StaticResource PrimaryButton}" Content="+  Adicionar app" Command="{Binding AddAppCommand}" DockPanel.Dock="Left" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Reaplicar em conexões abertas" Command="{Binding ReapplyCommand}" Margin="8,0,0,0" DockPanel.Dock="Left"
+                                ToolTip="Fecha as conexões que estão do lado errado (ex.: abertas antes de você marcar o app). Os apps reconectam sozinhos, já seguindo as regras." />
+                        <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                   Text="Marcar/desmarcar vale na hora pra conexões novas. As que já estavam abertas terminam onde começaram, até você usar Reaplicar ou Reabrir." />
+                    </DockPanel>
+
+                    <Border Grid.Row="4" Style="{StaticResource CardBorder}" Padding="0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="14,9,14,9">
+                                <Grid TextElement.Foreground="{StaticResource SubInk}" TextElement.FontSize="11" TextElement.FontWeight="SemiBold">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="210" />
+                                        <ColumnDefinition Width="74" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="104" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="1" Text="APP" Margin="8,0,0,0" />
+                                    <TextBlock Grid.Column="2" Text="MÉTODO" />
+                                    <TextBlock Grid.Column="3" Text="AGORA" />
+                                    <TextBlock Grid.Column="4" Text="TÚNEL" HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="5" Text="KILL-SWITCH" HorizontalAlignment="Center"
+                                               ToolTip="Opcional. Se o túnel cair (ou o Mingal Tunnel estiver fechado), o app fica sem internet em vez de sair pela rede normal sem você perceber." />
+                                    <TextBlock Grid.Column="6" Text="ABRIR JUNTO" HorizontalAlignment="Center"
+                                               ToolTip="Abre o app depois que o túnel conectar, quando o Mingal Tunnel inicia com o Windows." />
+                                </Grid>
+                            </Border>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Apps}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="14,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="34" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="150" />
+                                                        <ColumnDefinition Width="210" />
+                                                        <ColumnDefinition Width="74" />
+                                                        <ColumnDefinition Width="80" />
+                                                        <ColumnDefinition Width="80" />
+                                                        <ColumnDefinition Width="104" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Image Source="{Binding Icon}" Width="26" Height="26" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                    <StackPanel Grid.Column="1" Margin="8,0,12,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding PathText}" Foreground="{StaticResource SubInk}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding PathText}" />
+                                                        <TextBlock Text="{Binding Warning}" Foreground="{StaticResource WarnText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                                   Visibility="{Binding HasWarning, Converter={StaticResource BoolVis}}" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding MethodText}" ToolTip="{Binding MethodTip}" Foreground="{StaticResource SubInk}"
+                                                               VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0" />
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Ellipse Width="8" Height="8" Fill="{Binding LiveBrush}" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding LiveText}" Margin="7,0,8,0" TextWrapping="Wrap" MaxWidth="190" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <CheckBox Grid.Column="4" Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Tunelar: todo o tráfego do processo (TCP e UDP, inclusive voz e vídeo) vai pela VPN." />
+                                                    <CheckBox Grid.Column="5" IsChecked="{Binding KillSwitch}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Kill-switch: se o túnel cair, este app fica sem internet em vez de vazar pela rede normal." />
+                                                    <CheckBox Grid.Column="6" IsChecked="{Binding LaunchOnAutostart}" IsEnabled="{Binding CanLaunch}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Abrir este app depois que o túnel conectar no início do Windows. Desligue o 'abrir com o Windows' do próprio app." />
+                                                    <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource GhostButton}" Content="Reabrir" Command="{Binding RelaunchCommand}"
+                                                                ToolTip="Fecha e abre o app de novo, pra ele já começar seguindo a regra atual." />
+                                                        <Button Style="{StaticResource GhostButton}" Content="✕" Command="{Binding RemoveCommand}" ToolTip="Remover da lista" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+
+                    <TextBlock Grid.Row="5" Style="{StaticResource Hint}" Margin="2,8,0,0"
+                               Text="O túnel vale pro processo inteiro: marcar o Brave manda o navegador todo, não uma aba. Funciona com qualquer programa (jogos inclusive), TCP e UDP." />
+                </Grid>
+            </TabItem>
+
+            <!-- Profiles -->
+            <TabItem Header="Perfis VPN">
+                <Grid Margin="0,14,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <Button Style="{StaticResource PrimaryButton}" Content="Importar .conf" Command="{Binding ImportProfileCommand}" DockPanel.Dock="Left" />
+                        <Button Style="{StaticResource GhostButton}" Content="Onde pego um .conf do Proton?" Command="{Binding ProtonConfLinkCommand}" DockPanel.Dock="Right" Foreground="{StaticResource PinkDark}" />
+                        <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="14,0"
+                                   Text="Qualquer WireGuard serve: Proton, Mullvad, AirVPN, servidor próprio… A chave privada fica criptografada pro seu usuário do Windows." />
+                    </DockPanel>
+                    <Border Grid.Row="1" Background="{StaticResource InfoBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding HasNoProfiles, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource InfoText}" TextWrapping="Wrap"
+                                   Text="Nenhum perfil ainda. No Proton: account.protonvpn.com → Downloads → WireGuard configuration → escolha um servidor e baixe o .conf. Depois clique em Importar." />
+                    </Border>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <ItemsControl ItemsSource="{Binding Profiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" FontSize="15" FontWeight="SemiBold" MinWidth="260" BorderThickness="0,0,0,1" Background="Transparent"
+                                                             ToolTip="Clique pra renomear" />
+                                                    <Border Background="{StaticResource PinkSoft}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                            Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}">
+                                                        <TextBlock Text="em uso" Foreground="{StaticResource PinkDark}" FontWeight="SemiBold" FontSize="11" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding EndpointText}" Style="{StaticResource Hint}" Margin="0,6,0,0" />
+                                                <TextBlock Text="{Binding AddressText}" Style="{StaticResource Hint}" />
+                                                <TextBlock Text="{Binding Ipv6Text}" Style="{StaticResource Hint}" />
+                                                <TextBlock Text="{Binding ImportedText}" Style="{StaticResource Hint}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <Button Style="{StaticResource SecondaryButton}" Content="Usar este"
+                                                        Command="{Binding DataContext.UseProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                        Visibility="{Binding IsInactive, Converter={StaticResource BoolVis}}" />
+                                                <Button Style="{StaticResource GhostButton}" Content="Excluir" Margin="6,0,0,0"
+                                                        Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Settings -->
+            <TabItem Header="Configurações">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,14,0,0">
+                    <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Inicialização" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutostartEnabled}" Margin="0,4"
+                                          Content="Iniciar com o Windows (conecta sozinho e abre os apps marcados em 'Abrir junto')" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutoConnectOnLaunch}" Margin="0,4" Content="Ligar o túnel ao abrir o Mingal Tunnel" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,4" Content="Fechar a janela deixa o túnel rodando na bandeja" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Reconexão" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutoReconnect}" Margin="0,4" Content="Reconectar sozinho se o túnel cair" />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Máximo de tentativas seguidas" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding MaxReconnectText, UpdateSourceTrigger=LostFocus}" Width="60" Margin="10,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="Espera 2s, 5s, 10s, 20s, 30s entre tentativas. Depois disso para e avisa, em vez de ficar em loop. Também reinicia sozinho quando você troca de rede (cabo ↔ Wi-Fi)." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Proxy local (SOCKS5 / HTTP)" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Porta" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding ProxyPortText, UpdateSourceTrigger=LostFocus}" Width="80" Margin="10,0,0,0" />
+                                    <TextBlock Text="{Binding PortHint}" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="Só escuta em 127.0.0.1 e sempre sai pela VPN. É o que o 'Verificar IP' e o teste de latência usam, e você pode apontar qualquer programa pra socks5://127.0.0.1:porta." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Kill-switch e IPv6" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Kill-switch (opcional, por app): enquanto o túnel não estiver conectado (caiu, reconectando, desligado ou o Mingal Tunnel fechado), o Firewall do Windows bloqueia a internet desses apps. Com o túnel no ar, um app tunelado nunca sai pela rede normal, mesmo se a VPN parar de responder." />
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="IPv6: se o seu provedor dá IPv6 e o perfil VPN não tem, o IPv6 dos apps tunelados é bloqueado (eles caem pro IPv4 na hora) em vez de sair por fora do túnel. Se o perfil tem IPv6, ele vai pela VPN também." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Motor (sing-box)" />
+                                <TextBlock Text="{Binding SingBoxInfo}" Style="{StaticResource Hint}" />
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button Style="{StaticResource GhostButton}" Content="Usar o embutido" Command="{Binding ResetSingBoxCommand}" DockPanel.Dock="Right" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Procurar" Command="{Binding BrowseSingBoxCommand}" DockPanel.Dock="Right" Margin="8,0" />
+                                    <TextBox Text="{Binding SingBoxPath, UpdateSourceTrigger=LostFocus}" ToolTip="Vazio = usa o sing-box que vem com o instalador" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Dados" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Tudo fica neste PC, em %LOCALAPPDATA%\MingalTunnel. Sem telemetria e sem checagem de update. As únicas conexões do app são o próprio túnel e o 'Verificar IP' quando você clica." />
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Abrir pasta de dados" Command="{Binding OpenDataFolderCommand}" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Abrir logs" Command="{Binding OpenLogsCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#FAF8FA" CornerRadius="17" Padding="10,5" HorizontalAlignment="Left" Margin="0,4,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="24" Height="24">
+                                    <Ellipse.Fill>
+                                        <ImageBrush ImageSource="pack://application:,,,/assets/avatar.png" />
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <TextBlock Text="made by mingal" Foreground="#8C8C91" FontSize="11" VerticalAlignment="Center" Margin="8,0,4,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Log -->
+        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Margin="0,12,0,0">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="24,8,18,2">
+                    <TextBlock Text="Log" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource GhostButton}" Content="Copiar" Command="{Binding CopyLogCommand}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Limpar" Command="{Binding ClearLogCommand}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Abrir pasta" Command="{Binding OpenLogsCommand}" />
+                    </StackPanel>
+                </DockPanel>
+                <ListBox x:Name="LogList" ItemsSource="{Binding Log}" Height="100" BorderThickness="0" Margin="18,0,18,8"
+                         FontFamily="Consolas" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock TextWrapping="Wrap">
+                                <Run Text="{Binding Time, Mode=OneWay}" Foreground="#A3A1AA" />
+                                <Run Text="  " />
+                                <Run Text="{Binding Message, Mode=OneWay}" Foreground="{Binding Brush, Mode=OneWay}" />
+                            </TextBlock>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>
