@@ -15,7 +15,7 @@ if (-not $SkipTests) {
 $out = "$root\dist\app"
 if (Test-Path $out) { Remove-Item $out -Recurse -Force }
 dotnet publish "$root\src\MingalTunnel.App\MingalTunnel.App.csproj" -c Release -r win-x64 --self-contained true `
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -o $out
+    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $out
 if ($LASTEXITCODE) { throw "publish failed" }
 foreach ($f in "MingalTunnel.exe", "engine\sing-box.exe", "engine\wintun.dll") {
     if (-not (Test-Path "$out\$f")) { throw "missing $f in publish output" }
