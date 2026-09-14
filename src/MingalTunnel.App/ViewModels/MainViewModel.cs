@@ -66,7 +66,16 @@ public sealed class MainViewModel : ObservableObject
 
     public AppSettings Settings { get; }
     public bool IsAdmin { get; }
-    public bool IsNotAdmin => !IsAdmin;
+    public bool IsNotAdmin => !IsAdmin && !_hideAdminBanner;
+    private bool _hideAdminBanner;
+
+    /// <summary>Snapshot renders come from an unelevated Debug build; show the UI as the elevated release looks.</summary>
+    public void PrepareForScreenshots()
+    {
+        _hideAdminBanner = true;
+        OnPropertyChanged(nameof(IsNotAdmin));
+        Log.Clear();
+    }
     public ObservableCollection<AppRowViewModel> Apps { get; } = [];
     public ObservableCollection<ProfileItem> Profiles { get; } = [];
     public ObservableCollection<LogLine> Log { get; } = [];
@@ -394,7 +403,7 @@ public sealed class MainViewModel : ObservableObject
                 var list = string.Join("\n", ex.Processes.Select(p => "• " + p.Path));
                 bool kill = interactive
                     ? Ask($"Já tem outro sing-box rodando:\n\n{list}\n\nDois túneis ao mesmo tempo disputam a rota padrão e derrubam a rede (e dois usando a mesma chave WireGuard derrubam a VPN). Encerrar o outro e continuar?", MessageBoxImage.Warning)
-                    : Settings.LegacyMigrationHandled && ex.Processes.All(p => p.Path.Contains("Discord Single-Tunneling", StringComparison.OrdinalIgnoreCase));
+                    : Settings.LegacyDisabled && ex.Processes.All(p => p.Path.Contains("Discord Single-Tunneling", StringComparison.OrdinalIgnoreCase));
                 if (!kill)
                 {
                     if (!interactive) Notify?.Invoke("Mingal Tunnel", "Outro sing-box já está rodando; o túnel não foi ligado.");
@@ -438,6 +447,7 @@ public sealed class MainViewModel : ObservableObject
         };
         StatusDetail = s == TunnelState.Stopped ? "O túnel está desligado. Nenhum app passa pela VPN." : detail;
         if (s is TunnelState.Stopped or TunnelState.Failed) LatencyText = "—";
+        UpdatePortHint();
         OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(IsTunnelActive));
         OnPropertyChanged(nameof(ToggleText));
@@ -777,6 +787,8 @@ public sealed class MainViewModel : ObservableObject
                 AppLog.Warn("Não consegui ler o perfil do Discord Tunneling; importe o .conf manualmente.");
             }
         }
+        Settings.LegacyDisabled = true;
+        QueueSave();
         if (IsAdmin) await LegacyDiscordTunneling.DisableAsync(l);
         else AppLog.Warn("Sem Administrador não dá pra desativar o Discord Tunneling antigo.");
     }

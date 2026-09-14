@@ -121,9 +121,15 @@ public static class AppCatalog
         // root\Discord.exe stub or root\Update.exe picked directly
         if (File.Exists(Path.Combine(dir, "Update.exe")))
         {
+            // Picking Update.exe itself: the app's exe is normally named after its
+            // root folder (Discord\app-*\Discord.exe), next to helpers we must skip.
             var target = exe.Equals("Update.exe", StringComparison.OrdinalIgnoreCase)
                 ? Directory.GetDirectories(dir, "app-*").SelectMany(d => Directory.GetFiles(d, "*.exe"))
-                    .Select(Path.GetFileName).FirstOrDefault(f => !f!.Equals("Update.exe", StringComparison.OrdinalIgnoreCase) && !f.Contains("squirrel", StringComparison.OrdinalIgnoreCase))
+                    .Select(f => Path.GetFileName(f)!)
+                    .Where(f => !f.Equals("Update.exe", StringComparison.OrdinalIgnoreCase) && !f.Contains("squirrel", StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(f => Path.GetFileNameWithoutExtension(f).Equals(Path.GetFileName(dir), StringComparison.OrdinalIgnoreCase))
+                    .ThenBy(f => f.Length)
+                    .FirstOrDefault()
                 : exe;
             if (target != null && Directory.GetDirectories(dir, "app-*").Any(d => File.Exists(Path.Combine(d, target))))
                 return SquirrelEntry(name, dir, target);

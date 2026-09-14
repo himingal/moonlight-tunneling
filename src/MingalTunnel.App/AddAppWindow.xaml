@@ -29,7 +29,8 @@
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
         </Style>
     </Window.Resources>
-    <Grid Margin="22">
+    <Border Padding="22">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -68,4 +69,5 @@
             </StackPanel>
         </DockPanel>
     </Grid>
+    </Border>
 </Window>

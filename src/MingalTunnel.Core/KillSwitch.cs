@@ -13,6 +13,7 @@ public sealed class KillSwitch
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private HashSet<string>? _applied;
+    private bool _warnedNoAdmin;
 
     public int EngagedCount => _applied?.Count ?? 0;
 
@@ -28,7 +29,11 @@ public sealed class KillSwitch
             if (_applied != null && _applied.SetEquals(desired)) return;
             if (!Elevation.IsAdministrator())
             {
-                if (desired.Count > 0) AppLog.Warn("Kill-switch precisa de Administrador; regras não aplicadas.");
+                if (desired.Count > 0 && !_warnedNoAdmin)
+                {
+                    _warnedNoAdmin = true;
+                    AppLog.Warn("Kill-switch precisa de Administrador; regras não aplicadas.");
+                }
                 return;
             }
             await FirewallRules.RemoveAllAsync();

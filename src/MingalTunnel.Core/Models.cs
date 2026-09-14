@@ -44,6 +44,8 @@ public sealed class AppSettings
     public bool MinimizeToTray { get; set; } = true;
     public string? SingBoxPathOverride { get; set; }
     public bool LegacyMigrationHandled { get; set; }
+    /// <summary>User accepted turning the old discord-tunneling off (so its sing-box may be stopped unattended).</summary>
+    public bool LegacyDisabled { get; set; }
     public bool TrayHintShown { get; set; }
     public bool FirstRunDone { get; set; }
 }

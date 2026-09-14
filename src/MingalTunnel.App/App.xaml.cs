@@ -110,30 +110,52 @@ public partial class App : Application
         w.Left = -4000;
         w.Top = 0;
         w.ShowInTaskbar = false;
+        w.Width = 1120;
+        w.Height = 800;
         w.Show();
         await _vm!.InitializeAsync(false, interactiveSetup: false);
-        await Task.Delay(1500);
+        await Task.Delay(2500);
+        _vm.PrepareForScreenshots();
+        string[] names = ["apps", "profiles", "settings"];
         for (int tab = 0; tab < 3; tab++)
         {
             _vm.SelectedTab = tab;
             await Task.Delay(700);
-            w.UpdateLayout();
-            var content = (FrameworkElement)w.Content;
-            var dpi = VisualTreeHelper.GetDpi(w);
-            var rtb = new RenderTargetBitmap((int)(content.ActualWidth * dpi.DpiScaleX), (int)(content.ActualHeight * dpi.DpiScaleY),
-                dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
-            rtb.Render(content);
-            var enc = new PngBitmapEncoder();
-            enc.Frames.Add(BitmapFrame.Create(rtb));
-            await using var fs = File.Create(Path.Combine(dir, $"tab{tab}.png"));
-            enc.Save(fs);
+            Render(w, Path.Combine(dir, $"{names[tab]}.png"));
         }
+
+        var add = new AddAppWindow { Owner = w, WindowStartupLocation = WindowStartupLocation.Manual, Left = -4000, Top = 0, ShowInTaskbar = false };
+        add.Show();
+        await Task.Delay(6000);
+        // Keep the README picture to well-known apps instead of everything running on the dev box.
+        add.Filter.Text = "Program Files";
+        await Task.Delay(500);
+        Render(add, Path.Combine(dir, "add-app.png"));
+        add.Close();
         _exiting = true;
         w.AllowClose();
         _vm.StopBackgroundWork();
         await _vm.ShutdownAsync();
         _tray?.Dispose();
         Shutdown();
+    }
+
+    /// <summary>Renders a window's content at 2x for crisp README images.</summary>
+    private static void Render(Window w, string file)
+    {
+        w.UpdateLayout();
+        var content = (FrameworkElement)w.Content;
+        const double scale = 2;
+        var rtb = new RenderTargetBitmap((int)(content.ActualWidth * scale), (int)(content.ActualHeight * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
+        var bg = new DrawingVisual();
+        using (var ctx = bg.RenderOpen())
+            ctx.DrawRectangle(w.Background, null, new Rect(0, 0, content.ActualWidth, content.ActualHeight));
+        rtb.Render(bg);
+        rtb.Render(content);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(rtb));
+        using var fs = File.Create(file);
+        enc.Save(fs);
     }
 #endif
 }
