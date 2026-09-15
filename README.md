@@ -5,8 +5,8 @@
 <h1 align="center">Mingal Tunnel</h1>
 
 <p align="center">
-  <b>Split tunneling por app pra Windows.</b><br>
-  Você escolhe quais programas passam pela VPN. O resto do PC continua na conexão normal.
+  <b>Per-app split tunneling for Windows.</b><br>
+  Pick which programs go through your VPN. The rest of your PC stays on your normal connection.
 </p>
 
 <p align="center">
@@ -17,111 +17,111 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/apps.png" width="880" alt="Lista de apps do Mingal Tunnel">
+  <img src="docs/screenshots/apps.png" width="880" alt="Mingal Tunnel app list">
 </p>
 
-Funciona com qualquer VPN WireGuard, inclusive as que não têm split tunneling nativo (Proton VPN free, Mullvad, servidor próprio). Nasceu pra fazer o **Go Live do Discord** funcionar sem jogar o PC inteiro na VPN, e hoje vale pra qualquer app: navegador, jogo, launcher.
+Works with any WireGuard VPN, including the ones without built-in split tunneling (Proton VPN free, Mullvad, your own server). It started as a way to get **Discord Go Live** working without pushing the whole PC through the VPN. Now it works for any app: browsers, games, launchers.
 
-É o sucessor do [discord-tunneling](https://github.com/himingal/discord-tunneling), agora com janela, lista de apps, perfis e sem mexer em atalho nenhum.
+It replaces [discord-tunneling](https://github.com/himingal/discord-tunneling). You get a real window, an app list and profiles, and you never touch a shortcut.
 
-## O que ele faz
+## What it does
 
 | | |
 |---|---|
-| 🎯 **Por processo, TCP e UDP** | Voz, vídeo, Go Live e jogos passam pelo túnel, não só o tráfego web. |
-| ⚡ **Aplica na hora** | Marcou ou desmarcou um app, vale pras conexões novas em segundos, sem reiniciar o túnel. |
-| 🔄 **Sobrevive a updates** | Discord/Slack (`app-*`) e apps da Microsoft Store continuam tunelados depois de se atualizarem. |
-| 🛡️ **Kill-switch por app** | Opcional. Se o túnel cair, o app fica sem internet em vez de vazar pela rede normal. |
-| 🌐 **Sem vazamento de IPv6** | Se a sua rede tem IPv6 e a VPN não, o IPv6 dos apps tunelados é bloqueado. |
-| 🔁 **Reconecta sozinho** | Detecta queda, troca de rede (cabo ↔ Wi-Fi) e VPN sem resposta, com limite de tentativas. |
-| 🔍 **Verificar IP** | Compara o IP de saída pela VPN com o seu IP normal. |
-| 🚀 **Inicia com o Windows** | Sem UAC no logon. Abre os apps escolhidos depois que o túnel conecta. |
+| 🎯 **Per process, TCP and UDP** | Voice, video, Go Live and games go through the tunnel, not only web traffic. |
+| ⚡ **Applies instantly** | Tick or untick an app and new connections follow within seconds. The tunnel doesn't restart. |
+| 🔄 **Survives updates** | Discord/Slack (`app-*` folders) and Microsoft Store apps stay tunneled after they update. |
+| 🛡️ **Per-app kill-switch** | Optional. If the tunnel drops, the app loses internet instead of leaking onto your normal network. |
+| 🌐 **No IPv6 leaks** | If your network has IPv6 and the VPN doesn't, IPv6 from tunneled apps is blocked. |
+| 🔁 **Reconnects on its own** | Handles crashes, network switches (Ethernet ↔ Wi-Fi) and unresponsive VPNs, with a retry limit. |
+| 🔍 **Exit IP check** | Compares your exit IP through the VPN with your normal IP. |
+| 🚀 **Starts with Windows** | No UAC prompt at logon. Opens your chosen apps once the tunnel is up. |
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/add-app.png" alt="Adicionar app"><br><sub>Adicionar qualquer programa: os que estão usando a rede, o Menu Iniciar, um .exe ou uma pasta inteira (jogos com launcher).</sub></td>
-    <td width="50%"><img src="docs/screenshots/profiles.png" alt="Perfis VPN"><br><sub>Vários perfis WireGuard. A chave privada fica criptografada pro seu usuário do Windows.</sub></td>
+    <td width="50%"><img src="docs/screenshots/add-app.png" alt="Add app"><br><sub>Add any program: apps using the network right now, the Start menu, a single .exe, or a whole folder (games with launchers).</sub></td>
+    <td width="50%"><img src="docs/screenshots/profiles.png" alt="VPN profiles"><br><sub>Multiple WireGuard profiles. Private keys are encrypted for your Windows user.</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Configurações"><br><sub>Inicialização, reconexão, porta do proxy local e motor.</sub></td>
+    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Startup, reconnection, local proxy port and engine.</sub></td>
   </tr>
 </table>
 
-<sub>Prints com perfis de exemplo (endereços de documentação, não são servidores reais).</sub>
+<sub>Screenshots use sample profiles (documentation addresses, not real servers).</sub>
 
-## Instalar
+## Install
 
-1. Baixe o `MingalTunnel-Setup-x.y.z.exe` em [Releases](https://github.com/himingal/mingal-tunnel/releases).
-2. Instale e abra. O Windows pede Administrador, porque é assim que o app cria o adaptador de rede virtual.
-3. Na aba **Perfis VPN**, clique em **Importar .conf**.
-   No Proton: account.protonvpn.com → Downloads → WireGuard configuration → escolha um servidor.
-4. Clique em **Ligar túnel**. O Discord já vem marcado. Marque os outros apps que quiser.
+1. Download `MingalTunnel-Setup-x.y.z.exe` from [Releases](https://github.com/himingal/mingal-tunnel/releases).
+2. Install it and open it. Windows asks for Administrator rights because the app has to create a virtual network adapter.
+3. On the **VPN profiles** tab, click **Import .conf**.
+   For Proton: account.protonvpn.com → Downloads → WireGuard configuration → pick a server.
+4. Click **Turn tunnel on**. Discord is ticked by default; tick any other apps you want.
 
-Se o **Discord Tunneling** antigo estiver instalado, o Mingal Tunnel oferece importar o perfil dele e desligar o antigo. Dois túneis ao mesmo tempo brigariam pela rota padrão.
+If the old **Discord Tunneling** is installed, Mingal Tunnel offers to import its profile and switch it off, since two tunnels would fight over the default route.
 
-## Como funciona
+## How it works
 
 ```
-.conf WireGuard ─► perfil (chave criptografada com DPAPI)
-apps marcados   ─► tunneled-apps.json (rule-set que o sing-box recarrega sozinho)
+WireGuard .conf ─► profile (key encrypted with DPAPI)
+ticked apps     ─► tunneled-apps.json (rule-set sing-box reloads on its own)
                            │
-             config via stdin (a chave nunca vai pro disco)
+             config over stdin (the key never touches disk)
                            ▼
-                sing-box (processo filho do app)
-                 ├─ adaptador TUN "MingalTunnel"
-                 ├─ processo marcado? ─► WireGuard ─► internet pela VPN
-                 └─ todo o resto      ─► placa de rede ─► internet normal
+                sing-box (child process of the app)
+                 ├─ TUN adapter "MingalTunnel"
+                 ├─ ticked process? ─► WireGuard ─► internet through the VPN
+                 └─ everything else ─► network card ─► normal internet
 ```
 
-O motor é o [sing-box](https://github.com/SagerNet/sing-box) em modo TUN. Ele descobre qual processo abriu cada conexão e decide a saída por isso. O app só gera a configuração, supervisiona o processo e mostra o que está acontecendo. Se o Mingal Tunnel fechar ou travar, o Windows derruba o sing-box junto, então nunca fica um túnel órfão.
+The engine is [sing-box](https://github.com/SagerNet/sing-box) in TUN mode. It works out which process opened each connection and picks the exit based on that. The app writes the config, supervises the process and shows what's happening. If Mingal Tunnel closes or crashes, Windows takes sing-box down with it, so no tunnel is ever left running orphaned.
 
-## Limitações conhecidas
+## Known limitations
 
-- **O túnel vale pro processo inteiro.** Marcar o Brave manda o navegador todo, não uma aba.
-- **Apps feitos com WebView2** (novo Teams, WhatsApp Desktop, novo Outlook) usam o `msedgewebview2.exe`, que é compartilhado entre eles. Tunelar esse executável tunela todos juntos.
-- **Precisa de Administrador.** O adaptador TUN exige.
-- **Todo o tráfego IPv4 do PC passa pelo sing-box**, mesmo o que sai direto. É o custo de rotear por processo. A sobrecarga é pequena, mas existe.
-- **Conexões já abertas** quando você marca ou desmarca um app terminam onde começaram. Use **Reaplicar** (fecha as que estão do lado errado) ou **Reabrir** (reinicia o app).
+- **The tunnel covers the whole process.** Ticking Brave sends the entire browser, not one tab.
+- **WebView2 apps share one process.** New Teams, WhatsApp Desktop and the new Outlook all use `msedgewebview2.exe`, so tunneling it tunnels all of them together.
+- **Needs Administrator**, because the TUN adapter requires it.
+- **All IPv4 traffic on the PC passes through sing-box**, even traffic that goes out directly. That's the cost of routing per process. The overhead is small, but it's there.
+- **Connections already open** when you tick or untick an app finish where they started. Use **Reapply**, which closes the ones on the wrong side, or **Relaunch**, which restarts the app.
 
-## Conferindo se está funcionando
+## Checking that it works
 
-1. Com o túnel ligado, clique em **Verificar**. "Pela VPN" tem que mostrar um IP diferente do "Normal".
-2. Clique em **Reabrir** no Discord. A coluna **Agora** mostra `No túnel · N conexões`.
-3. Abra [ipleak.net](https://ipleak.net) num app tunelado e num não tunelado: o IP e o país têm que ser diferentes.
-4. Com o kill-switch marcado num app, desligue o túnel: o app tem que ficar sem internet.
-5. Troque de rede com o túnel ligado: o log mostra "Rede mudou…" e o túnel volta sozinho.
+1. With the tunnel on, click **Check**. "Via VPN" should show a different IP from "Normal".
+2. Click **Relaunch** on Discord. The **Now** column should show `In tunnel · N connections`.
+3. Open [ipleak.net](https://ipleak.net) in a tunneled app and in a non-tunneled one. The IP and country should differ.
+4. Turn on the kill-switch for an app, then turn the tunnel off. That app should lose internet.
+5. Switch networks with the tunnel on. The log shows "Network changed…" and the tunnel comes back by itself.
 
-Se algo der errado, o log fica na própria janela (botão **Copiar**) e em `%LOCALAPPDATA%\MingalTunnel\logs`.
+If something goes wrong, the log is in the window itself (**Copy** button) and in `%LOCALAPPDATA%\MingalTunnel\logs`.
 
-## Privacidade
+## Privacy
 
-Tudo fica em `%LOCALAPPDATA%\MingalTunnel`. Não tem telemetria nem checagem de update. O app só faz tráfego próprio em três casos:
+Everything stays in `%LOCALAPPDATA%\MingalTunnel`. There's no telemetry and no update check. The app only makes its own network requests in three cases:
 
-- o túnel que você configurou;
-- o **Verificar IP** (api.ipify.org), só quando você clica;
-- um teste `generate_204` da Cloudflare, feito pelo próprio túnel pra medir a saúde da VPN.
+- the tunnel you configured;
+- **Check** (api.ipify.org), only when you click it;
+- a Cloudflare `generate_204` probe sent through the tunnel to monitor VPN health.
 
-## Compilar
+## Building
 
-Requer .NET SDK 10 e Inno Setup 6.
+Requires .NET SDK 10 and Inno Setup 6.
 
 ```powershell
-build\fetch-deps.ps1    # sing-box 1.14.0 + wintun 0.14.1, com SHA256 conferido
-build\publish.ps1       # testes + app self-contained + instalador em installer\output
+build\fetch-deps.ps1    # sing-box 1.14.0 + wintun 0.14.1, SHA256-verified
+build\publish.ps1       # tests + self-contained app + installer in installer\output
 ```
 
-A versão Debug roda sem Administrador: a interface funciona, mas o túnel não liga. `MingalTunnel.exe --snapshot <pasta>` gera os prints acima.
+Debug builds run without Administrator: the UI works, but the tunnel won't turn on. `MingalTunnel.exe --snapshot <folder>` renders the screenshots above.
 
 ```
-src/MingalTunnel.App        WPF (janela, bandeja, diálogos)
-src/MingalTunnel.Core       perfis, config do sing-box, supervisor, kill-switch
-src/MingalTunnel.Platform   Win32: processos, rede, firewall, tarefa agendada
-tests/                      parser, padrões, config validado pelo sing-box real
+src/MingalTunnel.App        WPF (window, tray, dialogs)
+src/MingalTunnel.Core       profiles, sing-box config, supervisor, kill-switch
+src/MingalTunnel.Platform   Win32: processes, network, firewall, scheduled task
+tests/                      parser, patterns, configs validated by the real sing-box
 installer/                  Inno Setup
 ```
 
-## Créditos
+## Credits
 
-[sing-box](https://github.com/SagerNet/sing-box) (GPLv3, distribuído sem modificações) · [Wintun](https://www.wintun.net) · Licença MIT
+[sing-box](https://github.com/SagerNet/sing-box) (GPLv3, shipped unmodified) · [Wintun](https://www.wintun.net) · MIT License
 
 <p align="center"><sub>made by mingal</sub></p>

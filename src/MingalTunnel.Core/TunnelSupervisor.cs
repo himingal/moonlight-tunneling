@@ -25,13 +25,13 @@ public sealed class TunnelStartOptions
 
 public class TunnelException(string message) : Exception(message);
 
-public sealed class PortInUseException(int port) : TunnelException($"A porta local {port} já está em uso por outro programa.")
+public sealed class PortInUseException(int port) : TunnelException($"Local port {port} is already in use by another program.")
 {
     public int Port { get; } = port;
 }
 
 public sealed class ForeignSingBoxException(IReadOnlyList<ProcessEntry> processes)
-    : TunnelException("Já existe outro sing-box rodando: " + string.Join(", ", processes.Select(p => p.Path)))
+    : TunnelException("Another sing-box is already running: " + string.Join(", ", processes.Select(p => p.Path)))
 {
     public IReadOnlyList<ProcessEntry> Processes { get; } = processes;
 }
@@ -63,7 +63,7 @@ public sealed partial class TunnelSupervisor : IDisposable
     public event Action<int?>? LatencyChanged;
 
     public TunnelState State { get; private set; } = TunnelState.Stopped;
-    public string Detail { get; private set; } = "Desligado";
+    public string Detail { get; private set; } = "Off";
     public ClashApiClient? Clash { get; private set; }
     public int ProxyPort { get; private set; }
     public string? BoundInterface { get; private set; }
@@ -108,8 +108,8 @@ public sealed partial class TunnelSupervisor : IDisposable
         try
         {
             KillProcess();
-            SetState(TunnelState.Stopped, "Desligado");
-            AppLog.Info("Túnel desligado.");
+            SetState(TunnelState.Stopped, "Off");
+            AppLog.Info("Tunnel turned off.");
         }
         finally
         {
@@ -120,17 +120,17 @@ public sealed partial class TunnelSupervisor : IDisposable
     private async Task StartCoreAsync(bool reconnecting)
     {
         var o = _opts!;
-        if (!reconnecting) SetState(TunnelState.Starting, "Iniciando…");
+        if (!reconnecting) SetState(TunnelState.Starting, "Starting…");
         try
         {
             if (!File.Exists(o.SingBoxExe))
-                throw new TunnelException($"sing-box.exe não encontrado em {o.SingBoxExe}. Reinstale o Mingal Tunnel ou aponte outro caminho em Configurações.");
+                throw new TunnelException($"sing-box.exe not found at {o.SingBoxExe}. Reinstall Mingal Tunnel or point to another copy in Settings.");
             var version = await SingBoxBinary.GetVersionAsync(o.SingBoxExe)
-                          ?? throw new TunnelException($"{o.SingBoxExe} não executou. Antivírus pode ter bloqueado o arquivo.");
+                          ?? throw new TunnelException($"{o.SingBoxExe} failed to run. An antivirus may have blocked it.");
             if (version < SingBoxBinary.Minimum)
-                throw new TunnelException($"sing-box {version} é antigo demais (mínimo {SingBoxBinary.Minimum}).");
+                throw new TunnelException($"sing-box {version} is too old (minimum {SingBoxBinary.Minimum}).");
             if (o.EnableTun && !Elevation.IsAdministrator())
-                throw new TunnelException("O Mingal Tunnel precisa rodar como Administrador pra criar o adaptador de rede virtual (TUN).");
+                throw new TunnelException("Mingal Tunnel must run as Administrator to create the virtual network adapter (TUN).");
 
             var foreign = ProcessPaths.Snapshot()
                 .Where(p => Path.GetFileName(p.Path).Equals("sing-box.exe", StringComparison.OrdinalIgnoreCase) && p.Pid != _proc?.Id)
@@ -139,7 +139,7 @@ public sealed partial class TunnelSupervisor : IDisposable
             if (!NetworkDetect.IsLocalPortFree(o.ProxyPort)) throw new PortInUseException(o.ProxyPort);
 
             var phys = NetworkDetect.GetPhysicalInterface(BoundInterface)
-                       ?? throw new TunnelException("Nenhuma conexão de rede ativa encontrada (cabo/Wi-Fi).");
+                       ?? throw new TunnelException("No active network connection found (Ethernet/Wi-Fi).");
             BoundInterface = phys.Name;
 
             var p = o.Profile;
@@ -167,21 +167,22 @@ public sealed partial class TunnelSupervisor : IDisposable
             // instead of a process that died for unknown reasons.
             var check = await ProcessRunner.RunAsync(o.SingBoxExe, "check -c stdin", json, AppPaths.RuntimeDir);
             if (check.ExitCode != 0)
-                throw new TunnelException("O sing-box recusou a configuração: " + Clean(check.Combined));
+                throw new TunnelException("sing-box rejected the configuration: " + Clean(check.Combined));
 
+            if (o.EnableTun) await WaitForStaleAdapterAsync();
             ResetOversizedLog();
             _logOffset = File.Exists(AppPaths.SingBoxLog) ? new FileInfo(AppPaths.SingBoxLog).Length : 0;
             Launch(o.SingBoxExe, json);
-            AppLog.Info($"sing-box {version} iniciado (saída normal por \"{phys.Name}\"{(input.CaptureIPv6 ? ", IPv6 capturado" : "")}).");
+            AppLog.Info($"sing-box {version} started (normal traffic via \"{phys.Name}\"{(input.CaptureIPv6 ? ", IPv6 captured" : "")}).");
 
             if (o.EnableTun)
             {
                 if (!await WaitForTunAsync(TimeSpan.FromSeconds(40)))
-                    throw new TunnelException(FriendlyExit("O adaptador TUN não subiu."));
+                    throw new TunnelException(FriendlyExit("The TUN adapter did not come up."));
                 if (!await VerifyConnectivityAsync())
                 {
                     KillProcess();
-                    throw new TunnelException("O túnel subiu mas o PC perdeu acesso à internet, então ele foi desligado automaticamente e sua conexão normal foi restaurada.");
+                    throw new TunnelException("The tunnel came up but this PC lost internet access, so it was turned off automatically and your normal connection was restored.");
                 }
             }
 
@@ -192,7 +193,7 @@ public sealed partial class TunnelSupervisor : IDisposable
             int? ms = null;
             for (int i = 0; i < o.HandshakeProbes && ms == null; i++)
             {
-                if (_proc == null || _proc.HasExited) throw new TunnelException(FriendlyExit("O sing-box parou logo após iniciar."));
+                if (_proc == null || _proc.HasExited) throw new TunnelException(FriendlyExit("sing-box stopped right after starting."));
                 ms = await IpCheck.MeasureLatencyAsync(ProxyPort, TimeSpan.FromSeconds(5));
                 if (ms == null) await Task.Delay(1500);
             }
@@ -201,13 +202,13 @@ public sealed partial class TunnelSupervisor : IDisposable
             _connectedSince = DateTime.UtcNow;
             if (ms != null)
             {
-                SetState(TunnelState.Connected, $"Conectado · {p.Name}");
-                AppLog.Success($"Túnel conectado ({p.Name}, {ms} ms).");
+                SetState(TunnelState.Connected, $"Connected · {p.Name}");
+                AppLog.Success($"Tunnel connected ({p.Name}, {ms} ms).");
             }
             else
             {
-                SetState(TunnelState.Degraded, "Túnel ativo, mas o servidor VPN ainda não respondeu");
-                AppLog.Warn("Túnel ativo, mas o servidor VPN não respondeu ao teste. Confira se o .conf ainda é válido.");
+                SetState(TunnelState.Degraded, "Tunnel is up, but the VPN server hasn't answered yet");
+                AppLog.Warn("Tunnel is up, but the VPN server didn't answer the probe. Check that the .conf is still valid.");
             }
             StartHealthLoop();
         }
@@ -233,6 +234,9 @@ public sealed partial class TunnelSupervisor : IDisposable
             RedirectStandardInput = true,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
+            // Go writes UTF-8; the default (OEM code page) mangles localized Windows errors.
+            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = Encoding.UTF8,
             WorkingDirectory = AppPaths.RuntimeDir,
         };
         var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
@@ -240,7 +244,7 @@ public sealed partial class TunnelSupervisor : IDisposable
         proc.OutputDataReceived += (_, e) => CaptureOutput(e.Data);
         proc.Exited += OnProcessExited;
         proc.Start();
-        try { _job.Add(proc); } catch (Exception ex) { AppLog.Warn("Não consegui vincular o sing-box ao ciclo de vida do app: " + ex.Message); }
+        try { _job.Add(proc); } catch (Exception ex) { AppLog.Warn("Couldn't tie sing-box to the app's lifetime: " + ex.Message); }
         proc.BeginErrorReadLine();
         proc.BeginOutputReadLine();
         // The config (with the private key) goes over stdin and never touches disk.
@@ -296,7 +300,9 @@ public sealed partial class TunnelSupervisor : IDisposable
                 if (_stopping || !ReferenceEquals(sender, _proc)) return;
                 int code = -1;
                 try { code = ((Process)sender!).ExitCode; } catch { }
-                var reason = FriendlyExit($"sing-box parou inesperadamente (código {code}).");
+                var reason = FriendlyExit($"sing-box stopped unexpectedly (exit code {code}).");
+                if (code == 1 && reason.EndsWith(").", StringComparison.Ordinal))
+                    reason += " No error was reported, so it was most likely closed from outside (Task Manager or another tool).";
                 _proc = null;
                 AppLog.Error(reason);
                 await ReconnectLoopAsync(reason);
@@ -317,16 +323,16 @@ public sealed partial class TunnelSupervisor : IDisposable
             if (!o.AutoReconnect || _reconnectAttempts >= o.MaxReconnectAttempts)
             {
                 var msg = o.AutoReconnect
-                    ? $"Túnel caiu e não voltou após {_reconnectAttempts} tentativas. {reason}"
-                    : $"Túnel caiu. {reason}";
+                    ? $"The tunnel dropped and didn't come back after {_reconnectAttempts} attempts. {reason}"
+                    : $"The tunnel dropped. {reason}";
                 SetState(TunnelState.Failed, msg);
                 AppLog.Error(msg);
                 return;
             }
             _reconnectAttempts++;
             int delay = BackoffSeconds[Math.Min(_reconnectAttempts - 1, BackoffSeconds.Length - 1)];
-            SetState(TunnelState.Reconnecting, $"Reconectando ({_reconnectAttempts}/{o.MaxReconnectAttempts}) em {delay}s…");
-            AppLog.Warn($"Reconectando em {delay}s (tentativa {_reconnectAttempts}/{o.MaxReconnectAttempts})…");
+            SetState(TunnelState.Reconnecting, $"Reconnecting ({_reconnectAttempts}/{o.MaxReconnectAttempts}) in {delay}s…");
+            AppLog.Warn($"Reconnecting in {delay}s (attempt {_reconnectAttempts}/{o.MaxReconnectAttempts})…");
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(delay), _reconnectCts.Token);
@@ -349,7 +355,7 @@ public sealed partial class TunnelSupervisor : IDisposable
             catch (Exception ex)
             {
                 reason = ex.Message;
-                AppLog.Warn("Tentativa de reconexão falhou: " + ex.Message);
+                AppLog.Warn("Reconnect attempt failed: " + ex.Message);
             }
         }
     }
@@ -394,8 +400,8 @@ public sealed partial class TunnelSupervisor : IDisposable
                     _probeFailures = 0;
                     if (State != TunnelState.Connected)
                     {
-                        SetState(TunnelState.Connected, $"Conectado · {_opts?.Profile.Name}");
-                        AppLog.Success("Servidor VPN respondendo de novo.");
+                        SetState(TunnelState.Connected, $"Connected · {_opts?.Profile.Name}");
+                        AppLog.Success("The VPN server is answering again.");
                     }
                     // Only a tunnel that stayed up a while earns back its retries;
                     // otherwise a crash loop right after each connect would never end.
@@ -406,12 +412,12 @@ public sealed partial class TunnelSupervisor : IDisposable
                     _probeFailures++;
                     if (State == TunnelState.Connected)
                     {
-                        SetState(TunnelState.Degraded, "Servidor VPN sem resposta");
-                        AppLog.Warn("Servidor VPN não respondeu ao teste de saúde.");
+                        SetState(TunnelState.Degraded, "VPN server not responding");
+                        AppLog.Warn("The VPN server didn't answer the health probe.");
                     }
                     if (_probeFailures >= 3)
                     {
-                        _ = RestartAsync("VPN sem resposta há cerca de 1 minuto; reiniciando o túnel.", countsAsAttempt: true);
+                        _ = RestartAsync("The VPN has been unresponsive for about a minute; restarting the tunnel.", countsAsAttempt: true);
                         return;
                     }
                 }
@@ -429,16 +435,32 @@ public sealed partial class TunnelSupervisor : IDisposable
             var phys = NetworkDetect.GetPhysicalInterface(BoundInterface);
             if (phys == null)
             {
-                SetState(TunnelState.Degraded, "Sem conexão de rede física");
+                SetState(TunnelState.Degraded, "No physical network connection");
                 return;
             }
             if (!string.Equals(phys.Name, BoundInterface, StringComparison.Ordinal))
             {
                 // The direct outbound is pinned to the old adapter; rebuild on the new one.
                 BoundInterface = phys.Name;
-                _ = RestartAsync($"Rede mudou para \"{phys.Name}\"; reiniciando o túnel nela.", countsAsAttempt: false);
+                _ = RestartAsync($"Network changed to \"{phys.Name}\"; restarting the tunnel on it.", countsAsAttempt: false);
             }
         }, null, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// After a hard kill the Wintun adapter can linger for a few seconds; a new
+    /// sing-box started in that window fails with "create adapter: file already
+    /// exists | open existing adapter: element not found".
+    /// </summary>
+    private static async Task WaitForStaleAdapterAsync()
+    {
+        for (int i = 0; i < 16; i++)
+        {
+            bool present = NetworkInterface.GetAllNetworkInterfaces()
+                .Any(n => n.Name.Equals(NetworkDetect.TunInterfaceName, StringComparison.OrdinalIgnoreCase));
+            if (!present) return;
+            await Task.Delay(500);
+        }
     }
 
     private async Task<bool> WaitForTunAsync(TimeSpan timeout)
@@ -502,6 +524,14 @@ public sealed partial class TunnelSupervisor : IDisposable
         catch { }
     }
 
+    /// <summary>
+    /// Per-connection close errors ("connection upload closed … forcibly
+    /// closed by the remote host") are sing-box noting ordinary resets; they
+    /// are not tunnel problems and would bury the lines that are.
+    /// </summary>
+    [GeneratedRegex(@"connection: connection (upload|download) closed|open interface take too much time")]
+    private static partial Regex NoiseRx();
+
     private void PumpSingBoxLog()
     {
         try
@@ -518,6 +548,7 @@ public sealed partial class TunnelSupervisor : IDisposable
             {
                 var line = Clean(raw);
                 if (line.Length == 0 || !(line.Contains("ERROR") || line.Contains("FATAL") || line.Contains("WARN"))) continue;
+                if (NoiseRx().IsMatch(line)) continue;
                 var body = TimestampRx().Replace(line, "");
                 if (body == _lastLogLine) continue;
                 _lastLogLine = body;
@@ -535,17 +566,19 @@ public sealed partial class TunnelSupervisor : IDisposable
         PumpSingBoxLog();
         var t = tail.ToLowerInvariant();
         string hint =
-            t.Contains("wintun") || t.Contains("configure tun") || t.Contains("open interface")
-                ? "Falha ao criar o adaptador TUN (driver wintun). Confira se o wintun.dll está junto do sing-box.exe e se o antivírus não bloqueou."
+            t.Contains("create adapter") || t.Contains("open existing adapter")
+                ? "The previous virtual adapter was still being removed by Windows; retrying usually fixes it."
+            : t.Contains("wintun") || t.Contains("configure tun") || t.Contains("open interface")
+                ? "Couldn't create the TUN adapter (Wintun driver). Check that wintun.dll sits next to sing-box.exe and that no antivirus blocked it."
             : t.Contains("address already in use") || t.Contains("only one usage of each socket")
-                ? "Uma porta local já está em uso; troque a porta em Configurações."
+                ? "A local port is already in use; change the port in Settings."
             : t.Contains("missing default interface") || t.Contains("no such network interface")
-                ? "A rede ainda não estava pronta."
+                ? "The network wasn't ready yet."
             : t.Contains("access is denied") || t.Contains("acesso negado")
-                ? "Acesso negado; o Mingal Tunnel precisa rodar como Administrador."
+                ? "Access denied; Mingal Tunnel must run as Administrator."
             : "";
         var last = tail.Split('\n').LastOrDefault(l => l.Contains("FATAL") || l.Contains("ERROR")) ?? tail.Split('\n').LastOrDefault() ?? "";
-        return string.Join(" ", new[] { prefix, hint, string.IsNullOrWhiteSpace(last) ? "" : $"Detalhe: {last}" }.Where(s => s.Length > 0));
+        return string.Join(" ", new[] { prefix, hint, string.IsNullOrWhiteSpace(last) ? "" : $"Details: {last}" }.Where(s => s.Length > 0));
     }
 
     [GeneratedRegex(@"\x1B\[[0-9;]*m")]

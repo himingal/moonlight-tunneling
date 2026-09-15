@@ -1,11 +1,11 @@
-; ============================================================
+﻿; ============================================================
 ;  Mingal Tunnel - Inno Setup script
 ;  Build with build\publish.ps1 (publishes the app into dist\app
 ;  and then compiles this file).
 ; ============================================================
 
 #define MyAppName "Mingal Tunnel"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "mingal"
 #define MyAppExeName "MingalTunnel.exe"
 
@@ -35,8 +35,8 @@ WizardStyle=modern
 CloseApplications=force
 
 [Languages]
-Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -70,7 +70,7 @@ begin
   begin
     DataDir := ExpandConstant('{localappdata}\MingalTunnel');
     if DirExists(DataDir) then
-      if MsgBox('Apagar também as configurações e os perfis VPN (chaves WireGuard) salvos em ' + DataDir + '?',
+      if MsgBox('Also delete the settings and VPN profiles (WireGuard keys) saved in ' + DataDir + '?',
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
         DelTree(DataDir, True, True, True);
   end;

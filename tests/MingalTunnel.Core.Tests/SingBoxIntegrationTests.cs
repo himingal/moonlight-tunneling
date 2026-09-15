@@ -115,6 +115,6 @@ public class SingBoxIntegrationTests
         {
             Profile = TestEnv.FakeProfile(), SingBoxExe = @"C:\nope\sing-box.exe", ProxyPort = 1, EnableTun = false,
         }));
-        Assert.Contains("não encontrado", ex.Message);
+        Assert.Contains("not found", ex.Message);
     }
 }

@@ -23,18 +23,32 @@ public static class LegacyDiscordTunneling
         }
     }
 
+    private static string StartupShortcutPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "Discord (Tunneling).lnk");
+
+    public static async Task<bool> IsTaskEnabledAsync()
+    {
+        // /FO CSV keeps the output parseable on any Windows display language.
+        var r = await ProcessRunner.RunAsync("schtasks.exe", $"/Query /TN \"{TaskName}\" /FO CSV /NH");
+        if (r.ExitCode != 0) return false;
+        return !r.StdOut.Contains("\"Disabled\"", StringComparison.OrdinalIgnoreCase) &&
+               !r.StdOut.Contains("\"Desabilitado\"", StringComparison.OrdinalIgnoreCase) &&
+               !r.StdOut.Contains("\"Desativado\"", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static async Task<LegacyInstall?> DetectAsync()
     {
         var dir = CandidateDirs().FirstOrDefault(d => File.Exists(Path.Combine(d, "installer.ps1")) || File.Exists(Path.Combine(d, "config.json")));
         var task = (await ProcessRunner.RunAsync("schtasks.exe", $"/Query /TN \"{TaskName}\"")).ExitCode == 0;
-        var startup = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "Discord (Tunneling).lnk");
-        var running = dir == null ? [] : ProcessPaths.Snapshot()
-            .Where(p => p.Path.StartsWith(dir, StringComparison.OrdinalIgnoreCase) && p.Path.EndsWith("sing-box.exe", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (dir == null && !task && !File.Exists(startup)) return null;
+        var running = dir == null ? [] : RunningFrom(dir);
+        if (dir == null && !task && !File.Exists(StartupShortcutPath)) return null;
         var cfg = dir != null && File.Exists(Path.Combine(dir, "config.json")) ? Path.Combine(dir, "config.json") : null;
-        return new LegacyInstall(dir ?? "", cfg, task, File.Exists(startup) ? startup : null, running);
+        return new LegacyInstall(dir ?? "", cfg, task, File.Exists(StartupShortcutPath) ? StartupShortcutPath : null, running);
     }
+
+    private static List<ProcessEntry> RunningFrom(string dir) => ProcessPaths.Snapshot()
+        .Where(p => p.Path.StartsWith(dir, StringComparison.OrdinalIgnoreCase) && p.Path.EndsWith("sing-box.exe", StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
     /// <summary>Rebuilds a profile from the sing-box config the old installer generated (1.12+ endpoints or pre-1.12 outbounds).</summary>
     public static VpnProfile? ImportProfile(string configPath)
@@ -43,7 +57,7 @@ public static class LegacyDiscordTunneling
         {
             var root = JsonNode.Parse(File.ReadAllText(configPath))!;
             JsonNode? wg = root["endpoints"]?.AsArray().FirstOrDefault(e => (string?)e?["type"] == "wireguard");
-            var p = new VpnProfile { Name = "Importado do Discord Tunneling", Source = configPath };
+            var p = new VpnProfile { Name = "Imported from Discord Tunneling", Source = configPath };
             string? privateKey, psk = null;
 
             if (wg != null)
@@ -87,34 +101,60 @@ public static class LegacyDiscordTunneling
         }
     }
 
-    /// <summary>Turns the old tool off without deleting it (it can still be uninstalled normally).</summary>
-    public static async Task DisableAsync(LegacyInstall l)
+    /// <summary>
+    /// Turns the old tool off without deleting it (it can still be uninstalled
+    /// normally). Every step is verified and reported; returns true only when
+    /// the old tunnel will not come back at the next logon.
+    /// </summary>
+    public static async Task<bool> DisableAsync(LegacyInstall l)
     {
+        bool ok = true;
         if (l.TaskExists)
         {
+            // /End stops the running launcher instance; /DISABLE keeps it from
+            // starting at the next logon. Either can fail independently.
+            await ProcessRunner.RunAsync("schtasks.exe", $"/End /TN \"{TaskName}\"");
             var r = await ProcessRunner.RunAsync("schtasks.exe", $"/Change /TN \"{TaskName}\" /DISABLE");
-            if (r.ExitCode == 0) AppLog.Info("Tarefa de inicialização do Discord Tunneling desativada.");
-            else AppLog.Warn("Não consegui desativar a tarefa DiscordTunneling: " + r.Combined);
+            if (r.ExitCode == 0 && !await IsTaskEnabledAsync())
+            {
+                AppLog.Info("Discord Tunneling's startup task disabled.");
+            }
+            else
+            {
+                ok = false;
+                AppLog.Warn("Couldn't disable the DiscordTunneling startup task: " + (r.Combined.Length > 0 ? r.Combined : "unknown error") +
+                            " — uninstall Discord Tunneling from Control Panel to be sure.");
+            }
         }
-        if (l.StartupShortcut != null)
+        if (l.StartupShortcut != null && File.Exists(l.StartupShortcut))
         {
             try
             {
                 File.Delete(l.StartupShortcut);
-                AppLog.Info("Atalho de inicialização do Discord Tunneling removido.");
+                AppLog.Info("Discord Tunneling's startup shortcut removed.");
             }
-            catch (Exception ex) { AppLog.Warn("Não consegui remover o atalho de inicialização antigo: " + ex.Message); }
+            catch (Exception ex)
+            {
+                ok = false;
+                AppLog.Warn("Couldn't remove the old startup shortcut: " + ex.Message);
+            }
         }
-        foreach (var p in l.Running)
+        // Re-read: the launcher may have restarted sing-box since detection.
+        foreach (var p in l.Dir.Length > 0 ? RunningFrom(l.Dir) : l.Running)
         {
             try
             {
                 using var proc = System.Diagnostics.Process.GetProcessById(p.Pid);
                 proc.Kill();
                 proc.WaitForExit(5000);
-                AppLog.Info("Túnel antigo (sing-box do Discord Tunneling) encerrado.");
+                AppLog.Info("Old tunnel (Discord Tunneling's sing-box) stopped.");
             }
-            catch (Exception ex) { AppLog.Warn("Não consegui encerrar o sing-box antigo: " + ex.Message); }
+            catch (Exception ex)
+            {
+                ok = false;
+                AppLog.Warn("Couldn't stop the old sing-box: " + ex.Message);
+            }
         }
+        return ok;
     }
 }

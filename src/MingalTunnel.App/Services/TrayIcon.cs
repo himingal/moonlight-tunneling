@@ -18,11 +18,11 @@ public sealed class TrayIcon : IDisposable
         _icon = new Forms.NotifyIcon { Icon = new System.Drawing.Icon(stream), Visible = true, Text = "Mingal Tunnel" };
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir Mingal Tunnel", null, (_, _) => show());
-        _toggle = new Forms.ToolStripMenuItem("Ligar túnel", null, (_, _) => vm.ToggleTunnelCommand.Execute(null));
+        menu.Items.Add("Open Mingal Tunnel", null, (_, _) => show());
+        _toggle = new Forms.ToolStripMenuItem("Turn tunnel on", null, (_, _) => vm.ToggleTunnelCommand.Execute(null));
         menu.Items.Add(_toggle);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Sair", null, (_, _) => exit());
+        menu.Items.Add("Exit", null, (_, _) => exit());
         _icon.ContextMenuStrip = menu;
         _icon.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) show(); };
 

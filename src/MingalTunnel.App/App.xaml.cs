@@ -37,7 +37,12 @@ public partial class App : Application
 
         DispatcherUnhandledException += (_, a) =>
         {
-            AppLog.Error("Erro inesperado: " + a.Exception.Message);
+            // Full detail (type, inner exception, where) so the log is actually
+            // useful; AppLog collapses repeats so a looping error can't flood it.
+            var ex = a.Exception;
+            var inner = ex.InnerException != null ? $" ← {ex.InnerException.GetType().Name}: {ex.InnerException.Message}" : "";
+            var where = ex.StackTrace?.Split('\n').FirstOrDefault(l => l.Contains("MingalTunnel"))?.Trim() ?? "";
+            AppLog.Error($"Unexpected error: {ex.GetType().Name}: {ex.Message}{inner} {where}".Trim());
             a.Handled = true;
         };
         SessionEnding += (_, _) =>
@@ -59,6 +64,11 @@ public partial class App : Application
         _tray = new TrayIcon(_vm, ShowMain, ExitApp);
 
 #if DEBUG
+        if (e.Args.Contains("--stress-log"))
+        {
+            await StressLogAsync();
+            return;
+        }
         int snap = Array.FindIndex(e.Args, a => a == "--snapshot");
         if (snap >= 0 && snap + 1 < e.Args.Length)
         {
@@ -85,7 +95,7 @@ public partial class App : Application
         if (_vm.IsTunnelActive)
         {
             var owner = _window is { IsVisible: true } ? _window : null;
-            var text = "Sair do Mingal Tunnel desliga o túnel. Apps com kill-switch ficam sem internet até você abrir de novo.\n\nSair mesmo assim?";
+            var text = "Exiting Mingal Tunnel turns the tunnel off. Apps with the kill-switch stay offline until you open it again.\n\nExit anyway?";
             var r = owner != null
                 ? MessageBox.Show(owner, text, "Mingal Tunnel", MessageBoxButton.YesNo, MessageBoxImage.Question)
                 : MessageBox.Show(text, "Mingal Tunnel", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -132,6 +142,33 @@ public partial class App : Application
         await Task.Delay(500);
         Render(add, Path.Combine(dir, "add-app.png"));
         add.Close();
+        _exiting = true;
+        w.AllowClose();
+        _vm.StopBackgroundWork();
+        await _vm.ShutdownAsync();
+        _tray?.Dispose();
+        Shutdown();
+    }
+
+    /// <summary>
+    /// Regression check for the log-panel crash loop: floods the log from
+    /// several threads with the window on screen, then reports whether any
+    /// UI exception was raised. Writes stress-result.txt in the data dir.
+    /// </summary>
+    private async Task StressLogAsync()
+    {
+        var w = _window!;
+        w.Show();
+        await _vm!.InitializeAsync(false, interactiveSetup: false);
+        int errors = 0;
+        AppLog.Added += en => { if (en.Message.StartsWith("Unexpected error")) Interlocked.Increment(ref errors); };
+        await Task.WhenAll(Enumerable.Range(0, 4).Select(t => Task.Run(() =>
+        {
+            for (int i = 0; i < 1500; i++) AppLog.Info($"stress {t}-{i}");
+        })));
+        await Task.Delay(4000);
+        var result = $"errors={errors} logLines={_vm.Log.Count}";
+        File.WriteAllText(Path.Combine(AppPaths.DataDir, "stress-result.txt"), result);
         _exiting = true;
         w.AllowClose();
         _vm.StopBackgroundWork();

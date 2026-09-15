@@ -22,7 +22,7 @@ public static class JsonStore
         }
         catch (Exception ex)
         {
-            AppLog.Warn($"Não consegui ler {Path.GetFileName(path)} ({ex.Message}); usando padrão. O arquivo antigo foi guardado como .broken.");
+            AppLog.Warn($"Couldn't read {Path.GetFileName(path)} ({ex.Message}); using defaults. The old file was kept as .broken.");
             try { File.Copy(path, path + ".broken", overwrite: true); } catch { }
         }
         return new T();

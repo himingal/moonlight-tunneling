@@ -17,11 +17,11 @@ public sealed class MainViewModel : ObservableObject
     private readonly KillSwitch _killSwitch = new();
     private readonly DispatcherTimer _liveTimer;
     private readonly DispatcherTimer _saveTimer;
-    private bool _windowVisible, _liveBusy, _autostartMode;
+    private bool _windowVisible, _liveBusy, _hideAdminBanner;
 
-    private string _statusTitle = "Desligado", _statusDetail = "O túnel está desligado. Nenhum app passa pela VPN.";
+    private string _statusTitle = "Off", _statusDetail = "The tunnel is off. No app goes through the VPN.";
     private Brush _statusBrush = Palette.Gray;
-    private string _latencyText = "—", _vpnIp = "—", _directIp = "—", _ipVerdict = "Clique em Verificar pra comparar o IP da VPN com o seu IP normal.";
+    private string _latencyText = "—", _vpnIp = "—", _directIp = "—", _ipVerdict = "Click Check to compare the VPN exit IP with your normal IP.";
     private Brush _ipVerdictBrush = Palette.Gray;
     private bool _checkingIp;
     private string? _killSwitchBanner;
@@ -38,12 +38,13 @@ public sealed class MainViewModel : ObservableObject
         IsAdmin = Elevation.IsAdministrator();
 
         _liveTimer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, (_, _) => _ = RefreshLiveAsync(), ui);
-        _saveTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(400), DispatcherPriority.Background, (_, _) => { _saveTimer!.Stop(); SaveNow(); }, ui);
-        _saveTimer.Stop();
         _liveTimer.Stop();
+        // Normal priority: a busy UI must never starve settings saves.
+        _saveTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(400), DispatcherPriority.Normal, (_, _) => { _saveTimer!.Stop(); SaveNow(); }, ui);
+        _saveTimer.Stop();
 
         _tunnel.StateChanged += (s, d) => _ui.BeginInvoke(() => OnTunnelState(s, d));
-        _tunnel.LatencyChanged += ms => _ui.BeginInvoke(() => LatencyText = ms is int v ? $"{v} ms" : "sem resposta");
+        _tunnel.LatencyChanged += ms => _ui.BeginInvoke(() => LatencyText = ms is int v ? $"{v} ms" : "no response");
 
         ToggleTunnelCommand = new AsyncCommand(ToggleTunnelAsync, () => _tunnel.State != TunnelState.Starting);
         CheckIpCommand = new AsyncCommand(CheckIpAsync, () => !_checkingIp);
@@ -67,15 +68,6 @@ public sealed class MainViewModel : ObservableObject
     public AppSettings Settings { get; }
     public bool IsAdmin { get; }
     public bool IsNotAdmin => !IsAdmin && !_hideAdminBanner;
-    private bool _hideAdminBanner;
-
-    /// <summary>Snapshot renders come from an unelevated Debug build; show the UI as the elevated release looks.</summary>
-    public void PrepareForScreenshots()
-    {
-        _hideAdminBanner = true;
-        OnPropertyChanged(nameof(IsNotAdmin));
-        Log.Clear();
-    }
     public ObservableCollection<AppRowViewModel> Apps { get; } = [];
     public ObservableCollection<ProfileItem> Profiles { get; } = [];
     public ObservableCollection<LogLine> Log { get; } = [];
@@ -98,7 +90,7 @@ public sealed class MainViewModel : ObservableObject
     // ---------- status ----------
     public TunnelState State => _tunnel.State;
     public bool IsTunnelActive => _tunnel.IsActive;
-    public string ToggleText => _tunnel.State == TunnelState.Starting ? "Conectando…" : _tunnel.IsActive ? "Desligar túnel" : "Ligar túnel";
+    public string ToggleText => _tunnel.State == TunnelState.Starting ? "Connecting…" : _tunnel.IsActive ? "Turn tunnel off" : "Turn tunnel on";
     public string StatusTitle { get => _statusTitle; private set => Set(ref _statusTitle, value); }
     public string StatusDetail { get => _statusDetail; private set => Set(ref _statusDetail, value); }
     public Brush StatusBrush { get => _statusBrush; private set => Set(ref _statusBrush, value); }
@@ -107,7 +99,7 @@ public sealed class MainViewModel : ObservableObject
     public string DirectIpText { get => _directIp; private set => Set(ref _directIp, value); }
     public string IpVerdict { get => _ipVerdict; private set => Set(ref _ipVerdict, value); }
     public Brush IpVerdictBrush { get => _ipVerdictBrush; private set => Set(ref _ipVerdictBrush, value); }
-    public string ProxyText => $"proxy local 127.0.0.1:{Settings.ProxyPort}";
+    public string ProxyText => $"local proxy 127.0.0.1:{Settings.ProxyPort}";
     public string? KillSwitchBanner { get => _killSwitchBanner; private set { if (Set(ref _killSwitchBanner, value)) OnPropertyChanged(nameof(HasKillSwitchBanner)); } }
     public bool HasKillSwitchBanner => _killSwitchBanner != null;
     public int SelectedTab { get => _selectedTab; set => Set(ref _selectedTab, value); }
@@ -122,13 +114,13 @@ public sealed class MainViewModel : ObservableObject
             _activeProfile = value;
             foreach (var p in Profiles) p.IsActive = ReferenceEquals(p, value);
             Settings.ActiveProfileId = value?.Model.Id;
-            QueueSave();
+            SaveNow();
             OnPropertyChanged();
             OnPropertyChanged(nameof(ActiveProfileName));
         }
     }
 
-    public string ActiveProfileName => _activeProfile?.Name ?? "nenhum perfil";
+    public string ActiveProfileName => _activeProfile?.Name ?? "no profile";
 
     // ---------- settings ----------
     public bool AutostartEnabled
@@ -172,7 +164,7 @@ public sealed class MainViewModel : ObservableObject
                 QueueSave();
                 OnPropertyChanged(nameof(ProxyText));
                 UpdatePortHint();
-                if (_tunnel.IsActive) AppLog.Info($"Porta local agora é {n}; vale a partir da próxima conexão do túnel.");
+                if (_tunnel.IsActive) AppLog.Info($"Local port is now {n}; it applies from the next tunnel connection.");
             }
             OnPropertyChanged();
         }
@@ -214,15 +206,16 @@ public sealed class MainViewModel : ObservableObject
 
     public async Task InitializeAsync(bool autostart, bool interactiveSetup = true)
     {
-        _autostartMode = autostart;
         foreach (var e in AppLog.Snapshot()) Log.Add(new LogLine(e));
-        AppLog.Added += e => _ui.BeginInvoke(() =>
+        // Background priority: a burst of log lines queues behind input,
+        // rendering and timers instead of starving them.
+        AppLog.Added += e => _ui.BeginInvoke(DispatcherPriority.Background, () =>
         {
             Log.Add(new LogLine(e));
             if (Log.Count > 500) Log.RemoveAt(0);
         });
 
-        AppLog.Info($"Mingal Tunnel {typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)} iniciado{(IsAdmin ? "" : " (sem Administrador)")}.");
+        AppLog.Info($"Mingal Tunnel {typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)} started{(IsAdmin ? "" : " (without Administrator)")}.");
 
         foreach (var p in ProfileStore.LoadAll()) Profiles.Add(new ProfileItem(p));
         ActiveProfile = Profiles.FirstOrDefault(p => p.Model.Id == Settings.ActiveProfileId) ?? Profiles.FirstOrDefault();
@@ -242,7 +235,7 @@ public sealed class MainViewModel : ObservableObject
         await SyncKillSwitchAsync();
 
         if (!interactiveSetup) return;
-        if (!autostart && !Settings.LegacyMigrationHandled) await OfferLegacyMigrationAsync();
+        if (!autostart) await OfferLegacyMigrationAsync();
 
         if ((autostart || Settings.AutoConnectOnLaunch) && ActiveProfile != null && IsAdmin)
         {
@@ -252,7 +245,7 @@ public sealed class MainViewModel : ObservableObject
         }
         else if (ActiveProfile == null && !autostart)
         {
-            AppLog.Info("Nenhum perfil VPN ainda: importe um .conf em \"Perfis VPN\".");
+            AppLog.Info("No VPN profile yet: import a .conf under \"VPN profiles\".");
             SelectedTab = 1;
         }
     }
@@ -312,7 +305,7 @@ public sealed class MainViewModel : ObservableObject
                 return;
             await Task.Delay(3000);
         }
-        AppLog.Warn("A rede demorou pra ficar pronta; tentando conectar mesmo assim.");
+        AppLog.Warn("The network took too long to come up; trying to connect anyway.");
     }
 
     private async Task LaunchAutostartAppsAsync()
@@ -328,7 +321,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 // Opened by its own "start with Windows" before the tunnel existed:
                 // its first connections went out the normal way, so start it over.
-                AppLog.Info($"{r.Name} abriu antes do túnel; reiniciando pra já entrar tunelado.");
+                AppLog.Info($"{r.Name} started before the tunnel; restarting it so it begins tunneled.");
                 await Task.Run(() => ProcessPaths.KillWhere(r.Matcher.IsMatch, TimeSpan.FromSeconds(6)));
                 await Task.Delay(800);
                 running = false;
@@ -337,9 +330,9 @@ public sealed class MainViewModel : ObservableObject
             try
             {
                 DeElevatedLauncher.Launch(cmd.Exe, cmd.Args);
-                AppLog.Success($"{r.Name} aberto {(r.Enabled ? "pelo túnel" : "")}.".Replace(" .", "."));
+                AppLog.Success(r.Enabled ? $"{r.Name} opened through the tunnel." : $"{r.Name} opened.");
             }
-            catch (Exception ex) { AppLog.Error($"Não consegui abrir {r.Name}: {ex.Message}"); }
+            catch (Exception ex) { AppLog.Error($"Couldn't open {r.Name}: {ex.Message}"); }
         }
     }
 
@@ -364,20 +357,20 @@ public sealed class MainViewModel : ObservableObject
     {
         if (!IsAdmin)
         {
-            if (interactive) Inform("O túnel precisa do Mingal Tunnel rodando como Administrador (é ele que cria o adaptador de rede virtual). Abra pelo atalho do instalador.", MessageBoxImage.Warning);
+            if (interactive) Inform("The tunnel needs Mingal Tunnel running as Administrator (that's what creates the virtual network adapter). Open it from the installer's shortcut.", MessageBoxImage.Warning);
             return;
         }
         var profile = ActiveProfile?.Model;
         if (profile == null)
         {
-            if (interactive) Inform("Importe um arquivo .conf do WireGuard primeiro (aba Perfis VPN).");
+            if (interactive) Inform("Import a WireGuard .conf file first (VPN profiles tab).");
             SelectedTab = 1;
             return;
         }
         var exe = SingBoxBinary.Locate(Settings.SingBoxPathOverride);
         if (exe == null)
         {
-            var msg = "Não achei o sing-box.exe. Reinstale o Mingal Tunnel ou aponte o caminho em Configurações.";
+            var msg = "sing-box.exe not found. Reinstall Mingal Tunnel or set its path in Settings.";
             AppLog.Error(msg);
             if (interactive) Inform(msg, MessageBoxImage.Error);
             return;
@@ -402,11 +395,11 @@ public sealed class MainViewModel : ObservableObject
             {
                 var list = string.Join("\n", ex.Processes.Select(p => "• " + p.Path));
                 bool kill = interactive
-                    ? Ask($"Já tem outro sing-box rodando:\n\n{list}\n\nDois túneis ao mesmo tempo disputam a rota padrão e derrubam a rede (e dois usando a mesma chave WireGuard derrubam a VPN). Encerrar o outro e continuar?", MessageBoxImage.Warning)
+                    ? Ask($"Another sing-box is already running:\n\n{list}\n\nTwo tunnels at once fight over the default route and break the network (and two sharing one WireGuard key knock each other off the VPN). Stop the other one and continue?", MessageBoxImage.Warning)
                     : Settings.LegacyDisabled && ex.Processes.All(p => p.Path.Contains("Discord Single-Tunneling", StringComparison.OrdinalIgnoreCase));
                 if (!kill)
                 {
-                    if (!interactive) Notify?.Invoke("Mingal Tunnel", "Outro sing-box já está rodando; o túnel não foi ligado.");
+                    if (!interactive) Notify?.Invoke("Mingal Tunnel", "Another sing-box is already running; the tunnel was not started.");
                     return;
                 }
                 foreach (var p in ex.Processes)
@@ -414,16 +407,16 @@ public sealed class MainViewModel : ObservableObject
                     try { using var proc = Process.GetProcessById(p.Pid); proc.Kill(); proc.WaitForExit(5000); }
                     catch { }
                 }
-                AppLog.Info("Outro sing-box encerrado.");
+                AppLog.Info("Other sing-box stopped.");
                 await Task.Delay(1500);
             }
             catch (PortInUseException ex)
             {
                 int free = NetworkDetect.FindFreePort(ex.Port + 1);
-                if (interactive && !Ask($"A porta {ex.Port} já está em uso por outro programa. Usar a {free} pro proxy local?"))
+                if (interactive && !Ask($"Port {ex.Port} is already used by another program. Use {free} for the local proxy?"))
                     return;
                 ProxyPortText = free.ToString();
-                AppLog.Info($"Porta do proxy local trocada para {free}.");
+                AppLog.Info($"Local proxy port changed to {free}.");
             }
             catch (Exception ex)
             {
@@ -438,14 +431,14 @@ public sealed class MainViewModel : ObservableObject
     {
         (StatusTitle, StatusBrush) = s switch
         {
-            TunnelState.Connected => ("Conectado", Palette.Green),
-            TunnelState.Starting => ("Conectando…", Palette.Yellow),
-            TunnelState.Degraded => ("VPN sem resposta", Palette.Yellow),
-            TunnelState.Reconnecting => ("Reconectando…", Palette.Yellow),
-            TunnelState.Failed => ("Erro", Palette.Red),
-            _ => ("Desligado", Palette.Gray),
+            TunnelState.Connected => ("Connected", Palette.Green),
+            TunnelState.Starting => ("Connecting…", Palette.Yellow),
+            TunnelState.Degraded => ("VPN not responding", Palette.Yellow),
+            TunnelState.Reconnecting => ("Reconnecting…", Palette.Yellow),
+            TunnelState.Failed => ("Error", Palette.Red),
+            _ => ("Off", Palette.Gray),
         };
-        StatusDetail = s == TunnelState.Stopped ? "O túnel está desligado. Nenhum app passa pela VPN." : detail;
+        StatusDetail = s == TunnelState.Stopped ? "The tunnel is off. No app goes through the VPN." : detail;
         if (s is TunnelState.Stopped or TunnelState.Failed) LatencyText = "—";
         UpdatePortHint();
         OnPropertyChanged(nameof(State));
@@ -454,7 +447,7 @@ public sealed class MainViewModel : ObservableObject
         CommandManager.InvalidateRequerySuggested();
         _ = SyncKillSwitchAsync();
         if (!_windowVisible && s is TunnelState.Failed or TunnelState.Reconnecting)
-            Notify?.Invoke(s == TunnelState.Failed ? "Túnel caiu" : "Túnel reconectando", detail);
+            Notify?.Invoke(s == TunnelState.Failed ? "Tunnel dropped" : "Tunnel reconnecting", detail);
         if (_windowVisible) _ = RefreshLiveAsync();
     }
 
@@ -464,14 +457,14 @@ public sealed class MainViewModel : ObservableObject
         await _killSwitch.SyncAsync(up, Settings.Apps.ToList());
         var blocked = Settings.Apps.Where(a => a.Enabled && a.KillSwitch).Select(a => a.Name).ToList();
         KillSwitchBanner = !up && blocked.Count > 0 && IsAdmin
-            ? $"Kill-switch ativo: {string.Join(", ", blocked)} {(blocked.Count == 1 ? "está" : "estão")} sem internet até o túnel conectar."
+            ? $"Kill-switch engaged: {string.Join(", ", blocked)} {(blocked.Count == 1 ? "has" : "have")} no internet until the tunnel connects."
             : null;
     }
 
     private async Task CheckIpAsync()
     {
         _checkingIp = true;
-        IpVerdict = "Consultando…";
+        IpVerdict = "Checking…";
         IpVerdictBrush = Palette.Gray;
         try
         {
@@ -479,17 +472,17 @@ public sealed class MainViewModel : ObservableObject
             var vpnTask = _tunnel.IsTunUp ? IpCheck.GetPublicIpAsync(_tunnel.ProxyPort) : Task.FromResult<string?>(null);
             var direct = await directTask;
             var vpn = await vpnTask;
-            DirectIpText = direct ?? "falhou";
-            VpnIpText = _tunnel.IsTunUp ? vpn ?? "sem resposta" : "túnel desligado";
+            DirectIpText = direct ?? "failed";
+            VpnIpText = _tunnel.IsTunUp ? vpn ?? "no response" : "tunnel off";
             (IpVerdict, IpVerdictBrush) = (vpn, direct) switch
             {
-                (null, _) when !_tunnel.IsTunUp => ("Ligue o túnel pra ver o IP de saída da VPN.", Palette.Gray),
-                (null, _) => ("A VPN não respondeu. Os apps tunelados estão sem saída agora.", Palette.Red),
-                (_, null) => ("VPN ok; não consegui ver o IP normal.", Palette.Yellow),
-                var (v, d) when v == d => ("⚠ Os dois IPs são iguais: a VPN não está mudando a saída.", Palette.Red),
-                _ => ("✔ Apps tunelados saem por outro IP. O resto do PC continua no normal.", Palette.Green),
+                (null, _) when !_tunnel.IsTunUp => ("Turn the tunnel on to see the VPN exit IP.", Palette.Gray),
+                (null, _) => ("The VPN didn't answer. Tunneled apps have no way out right now.", Palette.Red),
+                (_, null) => ("VPN is fine; couldn't read your normal IP.", Palette.Yellow),
+                var (v, d) when v == d => ("⚠ Both IPs are the same: the VPN isn't changing the exit.", Palette.Red),
+                _ => ("✔ Tunneled apps exit through a different IP. The rest of the PC stays on your normal one.", Palette.Green),
             };
-            AppLog.Info($"IP de saída: VPN {VpnIpText} · normal {DirectIpText}.");
+            AppLog.Info($"Exit IP: VPN {VpnIpText} · normal {DirectIpText}.");
         }
         finally
         {
@@ -508,7 +501,7 @@ public sealed class MainViewModel : ObservableObject
         if (change == AppChange.LaunchOnAutostart)
         {
             if (row.LaunchOnAutostart && !AutostartEnabled)
-                AppLog.Info($"{row.Name} vai abrir junto quando o \"Iniciar com o Windows\" estiver ligado (Configurações).");
+                AppLog.Info($"{row.Name} will open with Windows once \"Start with Windows\" is on (Settings).");
             return;
         }
         if (change == AppChange.Enabled)
@@ -516,26 +509,26 @@ public sealed class MainViewModel : ObservableObject
             bool changed = RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
             if (changed)
             {
-                string when = _tunnel.IsActive ? "" : " (vale quando o túnel ligar)";
+                string when = _tunnel.IsActive ? "" : " (applies when the tunnel is on)";
                 if (row.Enabled)
-                    AppLog.Success($"{row.Name}: conexões novas vão pelo túnel{when}." + (row.IsRunning && _tunnel.IsActive ? " As já abertas continuam onde estavam; use Reabrir ou Reaplicar." : ""));
+                    AppLog.Success($"{row.Name}: new connections go through the tunnel{when}." + (row.IsRunning && _tunnel.IsActive ? " Already-open ones stay where they are; use Relaunch or Reapply." : ""));
                 else
-                    AppLog.Info($"{row.Name}: fora do túnel; conexões novas saem pela rede normal." + (row.IsRunning && _tunnel.IsActive ? " As já abertas pela VPN terminam por lá, a menos que você use Reaplicar." : ""));
+                    AppLog.Info($"{row.Name}: out of the tunnel; new connections use the normal network." + (row.IsRunning && _tunnel.IsActive ? " Ones already open through the VPN finish there unless you use Reapply." : ""));
                 if (row.Enabled && AppCatalog.IsSharedWebView(row.PathText))
-                    AppLog.Warn("msedgewebview2.exe é compartilhado por vários apps; todos eles vão junto pro túnel.");
+                    AppLog.Warn("msedgewebview2.exe is shared by several apps; all of them go through the tunnel together.");
             }
         }
         if (change == AppChange.KillSwitch)
             AppLog.Info(row.KillSwitch
-                ? $"{row.Name}: kill-switch ligado. Se o túnel cair, ele fica sem internet em vez de sair pela rede normal."
-                : $"{row.Name}: kill-switch desligado.");
+                ? $"{row.Name}: kill-switch on. If the tunnel drops, it gets no internet instead of using the normal network."
+                : $"{row.Name}: kill-switch off.");
         _ = SyncKillSwitchAsync();
         _ = RefreshLiveAsync();
     }
 
     public void RemoveApp(AppRowViewModel row)
     {
-        if (row.Enabled && !Ask($"Remover {row.Name} da lista? Ele sai do túnel."))
+        if (row.Enabled && !Ask($"Remove {row.Name} from the list? It leaves the tunnel."))
             return;
         Apps.Remove(row);
         Settings.Apps.Remove(row.Model);
@@ -543,7 +536,7 @@ public sealed class MainViewModel : ObservableObject
         RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
         QueueSave();
         _ = SyncKillSwitchAsync();
-        AppLog.Info($"{row.Name} removido da lista.");
+        AppLog.Info($"{row.Name} removed from the list.");
     }
 
     private void AddApps()
@@ -570,31 +563,31 @@ public sealed class MainViewModel : ObservableObject
 
     public async Task RelaunchAsync(AppRowViewModel row)
     {
-        var where = row.Enabled ? "pelo túnel" : "pela rede normal";
+        var where = row.Enabled ? "through the tunnel" : "on the normal network";
         if (row.Enabled && !_tunnel.IsTunUp &&
-            !Ask($"O túnel está desligado, então {row.Name} vai abrir pela rede normal. Reabrir mesmo assim?"))
+            !Ask($"The tunnel is off, so {row.Name} will open on the normal network. Relaunch anyway?"))
             return;
-        if (!Ask($"Fechar e reabrir {row.Name} {where}?\n\nO que estiver aberto nele (chamada de voz, abas, textos não salvos) pode ser perdido.", MessageBoxImage.Warning))
+        if (!Ask($"Close and reopen {row.Name} {where}?\n\nAnything open in it (voice call, tabs, unsaved text) may be lost.", MessageBoxImage.Warning))
             return;
         var cmd = AppCatalog.GetLaunchCommand(row.Model);
         int killed = await Task.Run(() => ProcessPaths.KillWhere(row.Matcher.IsMatch, TimeSpan.FromSeconds(6)));
-        AppLog.Info($"{row.Name}: {killed} processo(s) fechado(s).");
+        AppLog.Info($"{row.Name}: {killed} process(es) closed.");
         if (cmd is { } c)
         {
             await Task.Delay(800);
             try
             {
                 DeElevatedLauncher.Launch(c.Exe, c.Args);
-                AppLog.Success($"{row.Name} reaberto {where}.");
+                AppLog.Success($"{row.Name} reopened {where}.");
             }
             catch (Exception ex)
             {
-                AppLog.Error($"Não consegui reabrir {row.Name}: {ex.Message}");
+                AppLog.Error($"Couldn't reopen {row.Name}: {ex.Message}");
             }
         }
         else
         {
-            Inform($"{row.Name} foi fechado. Abra de novo pelo menu Iniciar; ele já vai {where}.");
+            Inform($"{row.Name} was closed. Open it again from the Start menu; it will already go {where}.");
         }
         await Task.Delay(1500);
         await RefreshLiveAsync();
@@ -608,7 +601,7 @@ public sealed class MainViewModel : ObservableObject
         var conns = await clash.GetConnectionsAsync();
         if (conns == null)
         {
-            AppLog.Warn("Não consegui ler as conexões do túnel.");
+            AppLog.Warn("Couldn't read the tunnel's connections.");
             return;
         }
         var enabled = Apps.Where(r => r.Enabled).Select(r => r.Matcher).ToList();
@@ -624,8 +617,8 @@ public sealed class MainViewModel : ObservableObject
             }
         }
         AppLog.Info(closed == 0
-            ? "Todas as conexões abertas já seguem as regras."
-            : $"{closed} conexão(ões) do lado errado foram fechadas; os apps reconectam sozinhos já seguindo as regras.");
+            ? "All open connections already follow the rules."
+            : $"{closed} connection(s) on the wrong side were closed; the apps reconnect on their own, following the rules.");
         await Task.Delay(1000);
         await RefreshLiveAsync();
     }
@@ -690,8 +683,8 @@ public sealed class MainViewModel : ObservableObject
     {
         var dlg = new OpenFileDialog
         {
-            Title = "Escolha um ou mais arquivos .conf do WireGuard",
-            Filter = "WireGuard (*.conf)|*.conf|Todos os arquivos (*.*)|*.*",
+            Title = "Pick one or more WireGuard .conf files",
+            Filter = "WireGuard (*.conf)|*.conf|All files (*.*)|*.*",
             Multiselect = true,
             InitialDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
         };
@@ -704,20 +697,20 @@ public sealed class MainViewModel : ObservableObject
                 if (Profiles.Any(p => p.Model.PeerPublicKey == cfg.PeerPublicKey && p.Model.EndpointHost == cfg.EndpointHost &&
                                       p.Model.Addresses.SequenceEqual(cfg.Addresses)))
                 {
-                    AppLog.Info($"{Path.GetFileName(file)} já estava importado.");
+                    AppLog.Info($"{Path.GetFileName(file)} was already imported.");
                     continue;
                 }
                 var profile = WireGuardConf.ToProfile(cfg, Path.GetFileNameWithoutExtension(file), file);
                 ProfileStore.Save(profile);
                 var item = new ProfileItem(profile);
                 Profiles.Add(item);
-                AppLog.Success($"Perfil \"{profile.Name}\" importado ({profile.EndpointDisplay}).");
+                AppLog.Success($"Profile \"{profile.Name}\" imported ({profile.EndpointDisplay}).");
                 ActiveProfile ??= item;
             }
             catch (Exception ex)
             {
                 AppLog.Error($"{Path.GetFileName(file)}: {ex.Message}");
-                Inform($"Não consegui importar {Path.GetFileName(file)}:\n\n{ex.Message}", MessageBoxImage.Error);
+                Inform($"Couldn't import {Path.GetFileName(file)}:\n\n{ex.Message}", MessageBoxImage.Error);
             }
         }
         OnPropertyChanged(nameof(HasNoProfiles));
@@ -727,7 +720,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (ReferenceEquals(p, ActiveProfile)) return;
         ActiveProfile = p;
-        AppLog.Info($"Perfil ativo: {p.Name}.");
+        AppLog.Info($"Active profile: {p.Name}.");
         if (_tunnel.IsActive)
         {
             await _tunnel.StopAsync();
@@ -739,40 +732,66 @@ public sealed class MainViewModel : ObservableObject
     {
         if (ReferenceEquals(p, ActiveProfile) && _tunnel.IsActive)
         {
-            Inform("Esse perfil está em uso. Desligue o túnel antes de excluir.");
+            Inform("This profile is in use. Turn the tunnel off before deleting it.");
             return;
         }
-        if (!Ask($"Excluir o perfil \"{p.Name}\"? A chave dele é apagada deste PC (o .conf original não é tocado).")) return;
+        if (!Ask($"Delete the profile \"{p.Name}\"? Its key is erased from this PC (the original .conf is not touched).")) return;
         ProfileStore.Delete(p.Model);
         Profiles.Remove(p);
         if (ReferenceEquals(p, ActiveProfile)) ActiveProfile = Profiles.FirstOrDefault();
         OnPropertyChanged(nameof(HasNoProfiles));
-        AppLog.Info($"Perfil \"{p.Name}\" excluído.");
+        AppLog.Info($"Profile \"{p.Name}\" deleted.");
     }
 
+    /// <summary>
+    /// Offered until the old tool is actually off, not just once: if disabling
+    /// failed (or the user said no), the two tunnels would keep fighting.
+    /// </summary>
     private async Task OfferLegacyMigrationAsync()
     {
         LegacyInstall? l;
         try { l = await LegacyDiscordTunneling.DetectAsync(); }
         catch { l = null; }
-        Settings.LegacyMigrationHandled = true;
-        QueueSave();
         if (l == null) return;
 
+        bool taskOn = l.TaskExists && await LegacyDiscordTunneling.IsTaskEnabledAsync();
+        bool stillActive = taskOn || l.StartupShortcut != null || l.Running.Count > 0;
+        bool canImport = l.ConfigPath != null && !Profiles.Any(p => p.Model.Source == l.ConfigPath);
+        if (!stillActive && !canImport) return;
+        if (Settings.LegacyMigrationHandled && !Settings.LegacyDisabled && !canImport) return; // user said no before
+
         var parts = new List<string>();
-        if (l.ConfigPath != null) parts.Add("• importar o perfil VPN dele (a mesma chave WireGuard)");
-        if (l.TaskExists || l.StartupShortcut != null) parts.Add("• desativar a inicialização automática dele");
-        if (l.Running.Count > 0) parts.Add("• encerrar o túnel antigo que está rodando agora");
-        if (parts.Count == 0) return;
-        if (!Ask("Encontrei o Discord Tunneling (a versão antiga) neste PC. Posso:\n\n" + string.Join("\n", parts) +
-                 "\n\nOs arquivos dele não são apagados; dá pra desinstalar pelo Painel de Controle depois. Fazer isso agora?"))
+        if (canImport) parts.Add("• import its VPN profile (same WireGuard key)");
+        if (taskOn || l.StartupShortcut != null) parts.Add("• turn off its startup");
+        if (l.Running.Count > 0) parts.Add("• stop the old tunnel that's running now");
+        if (!Ask("Found Discord Tunneling (the old version) on this PC. I can:\n\n" + string.Join("\n", parts) +
+                 "\n\nIts files are not deleted; you can uninstall it from Control Panel later. Do it now?"))
         {
-            AppLog.Info("Migração do Discord Tunneling recusada; se os dois rodarem juntos, o Mingal avisa antes de ligar.");
+            Settings.LegacyMigrationHandled = true;
+            SaveNow();
+            AppLog.Info("Discord Tunneling migration declined; if both run at once, Mingal asks before turning on.");
             return;
         }
-        if (l.ConfigPath != null)
+
+        // Turn the old tunnel off first: it's the part that matters, and it
+        // shouldn't depend on anything after it succeeding.
+        bool disabled = true;
+        if (stillActive)
         {
-            var p = LegacyDiscordTunneling.ImportProfile(l.ConfigPath);
+            if (IsAdmin) disabled = await LegacyDiscordTunneling.DisableAsync(l);
+            else
+            {
+                disabled = false;
+                AppLog.Warn("Without Administrator the old Discord Tunneling can't be turned off.");
+            }
+        }
+        Settings.LegacyMigrationHandled = true;
+        Settings.LegacyDisabled = disabled;
+        SaveNow();
+
+        if (canImport)
+        {
+            var p = LegacyDiscordTunneling.ImportProfile(l.ConfigPath!);
             if (p != null && !Profiles.Any(x => x.Model.PeerPublicKey == p.PeerPublicKey && x.Model.EndpointHost == p.EndpointHost))
             {
                 ProfileStore.Save(p);
@@ -780,17 +799,15 @@ public sealed class MainViewModel : ObservableObject
                 Profiles.Add(item);
                 ActiveProfile ??= item;
                 OnPropertyChanged(nameof(HasNoProfiles));
-                AppLog.Success($"Perfil importado do Discord Tunneling ({p.EndpointDisplay}).");
+                AppLog.Success($"Profile imported from Discord Tunneling ({p.EndpointDisplay}).");
             }
             else if (p == null)
             {
-                AppLog.Warn("Não consegui ler o perfil do Discord Tunneling; importe o .conf manualmente.");
+                AppLog.Warn("Couldn't read Discord Tunneling's profile; import the .conf manually.");
             }
         }
-        Settings.LegacyDisabled = true;
-        QueueSave();
-        if (IsAdmin) await LegacyDiscordTunneling.DisableAsync(l);
-        else AppLog.Warn("Sem Administrador não dá pra desativar o Discord Tunneling antigo.");
+        if (!disabled)
+            Inform("The old Discord Tunneling couldn't be fully turned off (see the log). Uninstall it from Control Panel so it doesn't start with Windows again.", MessageBoxImage.Warning);
     }
 
     // ============================================================
@@ -804,11 +821,11 @@ public sealed class MainViewModel : ObservableObject
         bool ok = r.ExitCode == 0 || (!on && !await ScheduledTaskAutostart.IsEnabledAsync());
         if (ok)
         {
-            AppLog.Info(on ? "Iniciar com o Windows: ligado (tarefa agendada, sem pedir UAC no logon)." : "Iniciar com o Windows: desligado.");
+            AppLog.Info(on ? "Start with Windows: on (scheduled task, no UAC prompt at logon)." : "Start with Windows: off.");
         }
         else
         {
-            AppLog.Error("Não consegui alterar o início com o Windows: " + r.Combined);
+            AppLog.Error("Couldn't change Start with Windows: " + r.Combined);
             _autostart = !on;
             OnPropertyChanged(nameof(AutostartEnabled));
         }
@@ -816,7 +833,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void BrowseSingBox()
     {
-        var dlg = new OpenFileDialog { Title = "Escolha o sing-box.exe", Filter = "sing-box.exe|sing-box.exe|Executáveis (*.exe)|*.exe" };
+        var dlg = new OpenFileDialog { Title = "Pick sing-box.exe", Filter = "sing-box.exe|sing-box.exe|Programs (*.exe)|*.exe" };
         if (dlg.ShowDialog(OwnerProvider()) == true) SingBoxPath = dlg.FileName;
     }
 
@@ -825,20 +842,20 @@ public sealed class MainViewModel : ObservableObject
         var exe = SingBoxBinary.Locate(Settings.SingBoxPathOverride);
         if (exe == null)
         {
-            SingBoxInfo = Settings.SingBoxPathOverride != null ? "Arquivo não encontrado." : "sing-box embutido não encontrado; reinstale o Mingal Tunnel.";
+            SingBoxInfo = Settings.SingBoxPathOverride != null ? "File not found." : "Bundled sing-box not found; reinstall Mingal Tunnel.";
             return;
         }
         var v = await SingBoxBinary.GetVersionAsync(exe);
-        SingBoxInfo = v == null ? $"{exe} não executou."
-            : v < SingBoxBinary.Minimum ? $"sing-box {v} é antigo demais (mínimo {SingBoxBinary.Minimum})."
+        SingBoxInfo = v == null ? $"{exe} failed to run."
+            : v < SingBoxBinary.Minimum ? $"sing-box {v} is too old (minimum {SingBoxBinary.Minimum})."
             : $"sing-box {v} · {exe}";
     }
 
     private void UpdatePortHint()
     {
         int port = Settings.ProxyPort;
-        PortHint = _tunnel.IsActive && _tunnel.ProxyPort == port ? "em uso pelo túnel"
-            : NetworkDetect.IsLocalPortFree(port) ? "livre" : "em uso por outro programa";
+        PortHint = _tunnel.IsActive && _tunnel.ProxyPort == port ? "in use by the tunnel"
+            : NetworkDetect.IsLocalPortFree(port) ? "free" : "in use by another program";
     }
 
     private static void OpenFolder(string path)
@@ -847,12 +864,20 @@ public sealed class MainViewModel : ObservableObject
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
     }
 
+    /// <summary>Snapshot renders come from an unelevated Debug build; show the UI as the elevated release looks.</summary>
+    public void PrepareForScreenshots()
+    {
+        _hideAdminBanner = true;
+        OnPropertyChanged(nameof(IsNotAdmin));
+        Log.Clear();
+    }
+
     public void ShowTrayHintOnce()
     {
         if (Settings.TrayHintShown) return;
         Settings.TrayHintShown = true;
         QueueSave();
-        Notify?.Invoke("Mingal Tunnel continua aqui", "O túnel segue rodando na bandeja. Pra fechar de vez, clique com o botão direito no ícone > Sair.");
+        Notify?.Invoke("Mingal Tunnel is still running", "The tunnel keeps running from the tray. To quit, right-click the icon > Exit.");
     }
 
     private void QueueSave()
@@ -864,7 +889,7 @@ public sealed class MainViewModel : ObservableObject
     private void SaveNow()
     {
         try { JsonStore.Save(AppPaths.SettingsFile, Settings); }
-        catch (Exception ex) { AppLog.Error("Não consegui salvar as configurações: " + ex.Message); }
+        catch (Exception ex) { AppLog.Error("Couldn't save settings: " + ex.Message); }
     }
 
     private bool Ask(string text, MessageBoxImage icon = MessageBoxImage.Question)

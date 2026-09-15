@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -38,24 +39,24 @@ public sealed class AppRowViewModel : ObservableObject
 
     public string MethodText => Model.Kind switch
     {
-        AppMatchKind.Squirrel => "Processo · segue updates",
-        AppMatchKind.Folder => "Pasta inteira",
-        AppMatchKind.Regex => "Pacote da Store",
-        _ => "Processo",
+        AppMatchKind.Squirrel => "Process · follows updates",
+        AppMatchKind.Folder => "Whole folder",
+        AppMatchKind.Regex => "Store package",
+        _ => "Process",
     };
 
     public string MethodTip => Model.Kind switch
     {
-        AppMatchKind.Squirrel => "App que se autoatualiza em pastas app-x.y.z (Discord, Slack…). A regra vale pra qualquer versão, então updates não tiram ele do túnel.",
-        AppMatchKind.Folder => "Todo executável dentro desta pasta vai pelo túnel (bom pra jogos e launchers com vários .exe).",
-        AppMatchKind.Regex => "App da Microsoft Store: a regra vale pra qualquer versão do pacote.",
-        _ => "Todo o tráfego (TCP e UDP) deste executável vai pelo túnel.",
+        AppMatchKind.Squirrel => "Self-updating app installed in app-x.y.z folders (Discord, Slack…). The rule matches every version, so updates never drop it out of the tunnel.",
+        AppMatchKind.Folder => "Every executable inside this folder goes through the tunnel (handy for games and launchers with several .exe files).",
+        AppMatchKind.Regex => "Microsoft Store app: the rule matches any version of the package.",
+        _ => "All traffic (TCP and UDP) from this executable goes through the tunnel.",
     };
 
     public string? Warning =>
-        !AppCatalog.Exists(Model) ? "Não encontrado neste PC."
-        : AppCatalog.IsSharedWebView(PathText) ? "WebView2 é compartilhado: tunelar ele tunela todos os apps que usam WebView2 (novo Teams, WhatsApp, novo Outlook, Widgets…)."
-        : Model.Kind == AppMatchKind.Regex ? "Se este app for feito com WebView2 (ex.: WhatsApp), a rede sai pelo msedgewebview2.exe e tunelar só o app pode não ter efeito."
+        !AppCatalog.Exists(Model) ? "Not found on this PC."
+        : AppCatalog.IsSharedWebView(PathText) ? "WebView2 is shared: tunneling it tunnels every app that uses WebView2 (new Teams, WhatsApp, new Outlook, Widgets…)."
+        : Model.Kind == AppMatchKind.Regex ? "If this app is built on WebView2 (e.g. WhatsApp), its traffic comes from msedgewebview2.exe and tunneling the app alone may have no effect."
         : null;
 
     public bool HasWarning => Warning != null;
@@ -100,21 +101,23 @@ public sealed class AppRowViewModel : ObservableObject
     public Brush LiveBrush { get => _liveBrush; private set => Set(ref _liveBrush, value); }
     public bool IsRunning { get; private set; }
 
+    private static string Conns(int n) => n == 1 ? "1 connection" : $"{n} connections";
+
     public void UpdateLive(bool running, int vpn, int direct, bool tunnelUp, bool haveConnections)
     {
         IsRunning = running;
         (LiveText, LiveBrush) = (running, tunnelUp, haveConnections, Enabled) switch
         {
-            (false, _, _, _) => ("Fechado", Palette.Gray),
-            (true, false, _, true) => ("Aberto · túnel desligado", Palette.Yellow),
-            (true, false, _, false) => ("Aberto · rede normal", Palette.Gray),
-            (true, true, false, _) => ("Aberto", Palette.Gray),
-            (true, true, true, true) when direct > 0 && vpn == 0 => ("Aberto fora do túnel · reabra", Palette.Yellow),
-            (true, true, true, true) when direct > 0 => ($"No túnel · {direct} conexão(ões) antiga(s) fora", Palette.Yellow),
-            (true, true, true, true) when vpn > 0 => ($"No túnel · {vpn} conexão(ões)", Palette.Green),
-            (true, true, true, true) => ("No túnel · sem conexões agora", Palette.Green),
-            (true, true, true, false) when vpn > 0 => ($"Ainda no túnel ({vpn}) até reconectar", Palette.Yellow),
-            _ => ("Rede normal", Palette.Gray),
+            (false, _, _, _) => ("Closed", Palette.Gray),
+            (true, false, _, true) => ("Open · tunnel off", Palette.Yellow),
+            (true, false, _, false) => ("Open · normal network", Palette.Gray),
+            (true, true, false, _) => ("Open", Palette.Gray),
+            (true, true, true, true) when direct > 0 && vpn == 0 => ("Open outside the tunnel · relaunch", Palette.Yellow),
+            (true, true, true, true) when direct > 0 => ($"In tunnel · {Conns(direct)} still outside", Palette.Yellow),
+            (true, true, true, true) when vpn > 0 => ($"In tunnel · {Conns(vpn)}", Palette.Green),
+            (true, true, true, true) => ("In tunnel · no connections now", Palette.Green),
+            (true, true, true, false) when vpn > 0 => ($"Still in tunnel ({vpn}) until it reconnects", Palette.Yellow),
+            _ => ("Normal network", Palette.Gray),
         };
     }
 }
@@ -137,10 +140,10 @@ public sealed class ProfileItem(VpnProfile model) : ObservableObject
         }
     }
 
-    public string EndpointText => "Servidor " + Model.EndpointDisplay;
-    public string AddressText => "Endereço " + string.Join(", ", Model.Addresses);
-    public string Ipv6Text => Model.HasIPv6 ? "IPv6 pela VPN: sim" : "IPv6 pela VPN: não (IPv6 dos apps tunelados é bloqueado, não vaza)";
-    public string ImportedText => $"Importado em {Model.ImportedAt:dd/MM/yyyy}";
+    public string EndpointText => "Server " + Model.EndpointDisplay;
+    public string AddressText => "Address " + string.Join(", ", Model.Addresses);
+    public string Ipv6Text => Model.HasIPv6 ? "IPv6 through the VPN: yes" : "IPv6 through the VPN: no (tunneled apps' IPv6 is blocked, never leaked)";
+    public string ImportedText => "Imported " + Model.ImportedAt.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
     public bool IsActive { get => _isActive; set { if (Set(ref _isActive, value)) OnPropertyChanged(nameof(IsInactive)); } }
     public bool IsInactive => !_isActive;
 }

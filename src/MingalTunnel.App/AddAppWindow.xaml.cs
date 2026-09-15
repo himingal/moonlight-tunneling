@@ -41,7 +41,7 @@ public partial class AddAppWindow : Window
     }
 
     private static string? NoteFor(string path) =>
-        AppCatalog.IsSharedWebView(path) ? "Compartilhado por vários apps (Teams, WhatsApp, Outlook…): todos vão junto." : null;
+        AppCatalog.IsSharedWebView(path) ? "Shared by several apps (Teams, WhatsApp, Outlook…): they all go together." : null;
 
     private async Task LoadAsync()
     {
@@ -63,7 +63,7 @@ public partial class AddAppWindow : Window
         });
         foreach (var c in net) _network.Add(c);
         NetworkLoading.Visibility = _network.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        NetworkLoading.Text = "Nenhum programa com conexão aberta agora.";
+        NetworkLoading.Text = "No program has an open connection right now.";
 
         var menu = await Task.Run(() => ShellLinks.ScanStartMenu()
             .Where(s => !s.TargetPath.StartsWith(windir, StringComparison.OrdinalIgnoreCase))
@@ -73,7 +73,7 @@ public partial class AddAppWindow : Window
             .ToList());
         foreach (var c in menu) _startMenu.Add(c);
         StartMenuLoading.Visibility = _startMenu.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        StartMenuLoading.Text = "Nada encontrado no menu Iniciar.";
+        StartMenuLoading.Text = "Nothing found in the Start menu.";
 
         // Icons last, off the UI thread; frozen bitmaps can cross threads.
         var all = _network.Concat(_startMenu).ToList();
@@ -99,7 +99,7 @@ public partial class AddAppWindow : Window
 
     private void OnBrowseExe(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Title = "Escolha o executável", Filter = "Programas (*.exe)|*.exe", Multiselect = true };
+        var dlg = new OpenFileDialog { Title = "Pick the executable", Filter = "Programs (*.exe)|*.exe", Multiselect = true };
         if (dlg.ShowDialog(this) != true) return;
         foreach (var f in dlg.FileNames) Result.Add(AppCatalog.FromExecutable(f));
         DialogResult = true;
@@ -107,13 +107,13 @@ public partial class AddAppWindow : Window
 
     private void OnBrowseFolder(object sender, RoutedEventArgs e)
     {
-        var dlg = new OpenFolderDialog { Title = "Escolha a pasta (todo .exe dentro dela vai pelo túnel)" };
+        var dlg = new OpenFolderDialog { Title = "Pick the folder (every .exe inside it goes through the tunnel)" };
         if (dlg.ShowDialog(this) != true) return;
         var root = System.IO.Path.GetPathRoot(dlg.FolderName);
         if (string.Equals(dlg.FolderName.TrimEnd('\\') + "\\", root, StringComparison.OrdinalIgnoreCase) ||
             dlg.FolderName.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Escolha a pasta do programa/jogo, não a raiz do disco nem a pasta do Windows.", "Mingal Tunnel");
+            MessageBox.Show(this, "Pick the program or game folder, not a drive root or the Windows folder.", "Mingal Tunnel");
             return;
         }
         Result.Add(AppCatalog.FromFolder(dlg.FolderName));
@@ -126,7 +126,7 @@ public partial class AddAppWindow : Window
             .GroupBy(c => c.Path, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
         if (chosen.Count == 0)
         {
-            MessageBox.Show(this, "Marque pelo menos um app na lista, ou use Escolher .exe / pasta.", "Mingal Tunnel");
+            MessageBox.Show(this, "Tick at least one app in the list, or use Pick .exe / folder.", "Mingal Tunnel");
             return;
         }
         foreach (var c in chosen) Result.Add(AppCatalog.FromExecutable(c.Path, c.Name));

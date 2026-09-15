@@ -56,7 +56,7 @@ public static class WireGuardConf
         if (!peer.ContainsKey("PublicKey")) missing.Add("PublicKey");
         if (!peer.ContainsKey("Endpoint")) missing.Add("Endpoint");
         if (missing.Count > 0)
-            throw new FormatException("Arquivo .conf incompleto, faltando: " + string.Join(", ", missing));
+            throw new FormatException("Incomplete .conf file, missing: " + string.Join(", ", missing));
 
         var privateKey = iface["PrivateKey"];
         var publicKey = peer["PublicKey"];
@@ -95,19 +95,19 @@ public static class WireGuardConf
         {
             int close = endpoint.IndexOf(']');
             if (close < 0 || close + 2 > endpoint.Length || endpoint[close + 1] != ':')
-                throw new FormatException($"Endpoint inválido: {endpoint}");
+                throw new FormatException($"Invalid Endpoint: {endpoint}");
             host = endpoint[1..close];
             portText = endpoint[(close + 2)..];
         }
         else
         {
             int colon = endpoint.LastIndexOf(':');
-            if (colon <= 0) throw new FormatException($"Endpoint sem porta: {endpoint}");
+            if (colon <= 0) throw new FormatException($"Endpoint has no port: {endpoint}");
             host = endpoint[..colon];
             portText = endpoint[(colon + 1)..];
         }
         if (!int.TryParse(portText, out int port) || port is < 1 or > 65535)
-            throw new FormatException($"Porta inválida no Endpoint: {endpoint}");
+            throw new FormatException($"Invalid port in Endpoint: {endpoint}");
         return (host, port);
     }
 
@@ -127,6 +127,6 @@ public static class WireGuardConf
             if (Convert.FromBase64String(key).Length == 32) return;
         }
         catch (FormatException) { }
-        throw new FormatException($"{field} não é uma chave WireGuard válida.");
+        throw new FormatException($"{field} is not a valid WireGuard key.");
     }
 }

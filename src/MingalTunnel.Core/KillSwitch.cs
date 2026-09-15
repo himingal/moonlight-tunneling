@@ -32,7 +32,7 @@ public sealed class KillSwitch
                 if (desired.Count > 0 && !_warnedNoAdmin)
                 {
                     _warnedNoAdmin = true;
-                    AppLog.Warn("Kill-switch precisa de Administrador; regras não aplicadas.");
+                    AppLog.Warn("Kill-switch needs Administrator; rules not applied.");
                 }
                 return;
             }
@@ -41,14 +41,14 @@ public sealed class KillSwitch
             foreach (var path in desired)
                 if (await FirewallRules.BlockProgramAsync(path)) ok++;
             if (desired.Count > 0)
-                AppLog.Warn($"Kill-switch ativo: {ok} executável(is) sem rede até o túnel voltar.");
+                AppLog.Warn($"Kill-switch engaged: {ok} executable(s) blocked until the tunnel is back.");
             else if (_applied is { Count: > 0 })
-                AppLog.Info("Kill-switch liberado (túnel ativo).");
+                AppLog.Info("Kill-switch released (tunnel is up).");
             _applied = desired;
         }
         catch (Exception ex)
         {
-            AppLog.Error("Falha ao aplicar kill-switch: " + ex.Message);
+            AppLog.Error("Failed to apply the kill-switch: " + ex.Message);
         }
         finally
         {
