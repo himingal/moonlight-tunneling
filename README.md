@@ -65,7 +65,7 @@ If you'd rather keep Discord tunneled all the time, tick it in the list and igno
 3. On the **VPN profiles** tab, click **Import .conf**. For Proton, go to account.protonvpn.com → Downloads → WireGuard configuration and pick a server.
 4. Click **Go Live boost** for Discord, or tick the apps you want tunneled and click **Turn tunnel on**.
 
-Upgrading from Mingal Tunnel? Install on top. Profiles, settings and autostart are kept.
+Upgrading from Mingal Tunnel? Install on top. It closes the old version, and on first start Moonlight Tunneling moves your profiles, settings, autostart and kill-switch rules over to the new name.
 
 ## How it works
 
@@ -93,7 +93,7 @@ The engine is [sing-box](https://github.com/SagerNet/sing-box) in TUN mode. It i
 
 ## Troubleshooting
 
-The **Log** bar at the bottom of the window opens the activity log, and **Copy** puts it on your clipboard for bug reports. Files live in `%LOCALAPPDATA%\MingalTunnel\logs`; the folder keeps its original name so upgrades keep your data.
+The **Log** bar at the bottom of the window opens the activity log, and **Copy** puts it on your clipboard for bug reports. Log files live in `%LOCALAPPDATA%\MoonlightTunneling\logs`.
 
 ## Privacy
 
@@ -109,7 +109,7 @@ powershell -STA build\make-logo.ps1   # regenerates the icon, logo and banner
 build\publish.ps1                     # tests + self-contained app + installer
 ```
 
-Debug builds run without Administrator: the UI works, but the tunnel won't turn on. `MingalTunnel.exe --snapshot <folder>` renders the screenshots above.
+Debug builds run without Administrator: the UI works, but the tunnel won't turn on. `MoonlightTunneling.exe --snapshot <folder>` renders the screenshots above.
 
 ## Credits
 

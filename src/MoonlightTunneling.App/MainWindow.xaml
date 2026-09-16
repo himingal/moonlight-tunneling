@@ -1,0 +1,394 @@
+<Window x:Class="MoonlightTunneling.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Moonlight Tunneling" Width="1080" Height="780" MinWidth="900" MinHeight="620"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource Canvas}"
+        FontFamily="Segoe UI" FontSize="13" Foreground="{StaticResource Ink}"
+        Icon="pack://application:,,,/assets/app.ico"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Background="{StaticResource HeaderGradient}" Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Image Source="pack://application:,,,/assets/app_logo.png" Width="46" Height="46" RenderOptions.BitmapScalingMode="HighQuality" />
+                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Moonlight Tunneling" FontSize="22" FontWeight="Bold" Foreground="White" />
+                    <TextBlock Text="Only the apps you pick go through the VPN. The rest of your PC stays on your normal network." Foreground="#EDE8FF" />
+                </StackPanel>
+                <Border Grid.Column="2" Background="#33FFFFFF" CornerRadius="16" Padding="12,7" Margin="0,0,14,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="11" Height="11" Fill="{Binding StatusBrush}" Stroke="White" StrokeThickness="1.5" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusTitle}" Foreground="White" FontWeight="SemiBold" Margin="8,0,0,0" />
+                    </StackPanel>
+                </Border>
+                <Button Grid.Column="3" Style="{StaticResource HeaderButton}" Content="{Binding ToggleText}" Command="{Binding ToggleTunnelCommand}" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Tabs -->
+        <TabControl Grid.Row="1" Margin="24,8,24,0" SelectedIndex="{Binding SelectedTab}">
+
+            <!-- Apps -->
+            <TabItem Header="Apps">
+                <Grid Margin="0,14,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.6*" />
+                            <ColumnDefinition Width="14" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Caption}" Text="CONNECTION" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="10" Height="10" Fill="{Binding StatusBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding StatusTitle}" FontSize="17" FontWeight="SemiBold" Margin="8,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding StatusDetail}" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0">
+                                    <Run Text="Profile:" /> <Run Text="{Binding ActiveProfileName, Mode=OneWay}" FontWeight="SemiBold" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Caption}" Text="LATENCY THROUGH VPN" />
+                                <TextBlock Text="{Binding LatencyText}" FontSize="24" FontWeight="Bold" />
+                                <TextBlock Text="{Binding ProxyText}" Style="{StaticResource Hint}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="{StaticResource WarnBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding IsNotAdmin, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource WarnText}" TextWrapping="Wrap"
+                                   Text="Running without Administrator: you can set everything up, but the tunnel only turns on when Moonlight Tunneling runs as Administrator (the installer's shortcut does that)." />
+                    </Border>
+
+                    <Border Grid.Row="2" Background="{StaticResource DangerBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding HasKillSwitchBanner, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource DangerText}" TextWrapping="Wrap" Text="{Binding KillSwitchBanner}" />
+                    </Border>
+
+                    <Border Grid.Row="3" Style="{StaticResource CardBorder}" Margin="0,12,0,0"
+                            Background="{StaticResource PinkSoft}" BorderBrush="{StaticResource Pink}"
+                            Visibility="{Binding HasDiscord, Converter={StaticResource BoolVis}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Left" Style="{StaticResource PrimaryButton}" Content="Go Live boost" MinWidth="150"
+                                    Command="{Binding BoostCommand}" Visibility="{Binding IsNotBoosting, Converter={StaticResource BoolVis}}"
+                                    ToolTip="Opens Discord through the tunnel just long enough for it to sign in, then hands it back to your normal connection." />
+                            <Button DockPanel.Dock="Left" Style="{StaticResource SecondaryButton}" Content="Release now" MinWidth="150"
+                                    Command="{Binding BoostReleaseCommand}" Visibility="{Binding IsBoosting, Converter={StaticResource BoolVis}}"
+                                    ToolTip="Hand Discord back to the normal connection right now, without waiting out the hold." />
+                            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="Discord Go Live" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding BoostText}" Style="{StaticResource Hint}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <DockPanel Grid.Row="4" Margin="0,14,0,10" LastChildFill="True">
+                        <Button Style="{StaticResource PrimaryButton}" Content="+  Add app" Command="{Binding AddAppCommand}" DockPanel.Dock="Left" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Reapply to open connections" Command="{Binding ReapplyCommand}" Margin="8,0,0,0" DockPanel.Dock="Left"
+                                ToolTip="Closes connections on the wrong side (e.g. opened before you ticked the app). Apps reconnect by themselves, following the rules." />
+                        <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="16,0,0,0"
+                                   Text="Ticking an app applies to new connections right away. Connections already open finish where they started, unless you use Reapply or Relaunch." />
+                    </DockPanel>
+
+                    <Border Grid.Row="5" Style="{StaticResource CardBorder}" Padding="0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="14,9,14,9">
+                                <Grid TextElement.Foreground="{StaticResource SubInk}" TextElement.FontSize="11" TextElement.FontWeight="SemiBold">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="210" />
+                                        <ColumnDefinition Width="74" />
+                                        <ColumnDefinition Width="86" />
+                                        <ColumnDefinition Width="86" />
+                                        <ColumnDefinition Width="104" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="1" Text="APP" Margin="8,0,0,0" />
+                                    <TextBlock Grid.Column="2" Text="METHOD" />
+                                    <TextBlock Grid.Column="3" Text="NOW" />
+                                    <TextBlock Grid.Column="4" Text="TUNNEL" HorizontalAlignment="Center" />
+                                    <TextBlock Grid.Column="5" Text="KILL-SWITCH" HorizontalAlignment="Center"
+                                               ToolTip="Optional. If the tunnel drops (or Moonlight Tunneling is closed), the app gets no internet instead of silently using your normal network." />
+                                    <TextBlock Grid.Column="6" Text="OPEN WITH IT" HorizontalAlignment="Center"
+                                               ToolTip="Opens the app after the tunnel connects, when Moonlight Tunneling starts with Windows." />
+                                </Grid>
+                            </Border>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Apps}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="14,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="34" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="150" />
+                                                        <ColumnDefinition Width="210" />
+                                                        <ColumnDefinition Width="74" />
+                                                        <ColumnDefinition Width="86" />
+                                                        <ColumnDefinition Width="86" />
+                                                        <ColumnDefinition Width="104" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Image Source="{Binding Icon}" Width="26" Height="26" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                    <StackPanel Grid.Column="1" Margin="8,0,12,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding PathText}" Foreground="{StaticResource SubInk}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip="{Binding PathText}" />
+                                                        <TextBlock Text="{Binding Warning}" Foreground="{StaticResource WarnText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                                   Visibility="{Binding HasWarning, Converter={StaticResource BoolVis}}" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding MethodText}" ToolTip="{Binding MethodTip}" Foreground="{StaticResource SubInk}"
+                                                               VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0" />
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Ellipse Width="8" Height="8" Fill="{Binding LiveBrush}" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding LiveText}" Margin="7,0,8,0" TextWrapping="Wrap" MaxWidth="190" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                    <CheckBox Grid.Column="4" Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Tunnel: all of this process's traffic (TCP and UDP, voice and video included) goes through the VPN." />
+                                                    <CheckBox Grid.Column="5" IsChecked="{Binding KillSwitch}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Kill-switch: if the tunnel drops, this app gets no internet instead of leaking onto your normal network." />
+                                                    <CheckBox Grid.Column="6" IsChecked="{Binding LaunchOnAutostart}" IsEnabled="{Binding CanLaunch}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              ToolTip="Open this app after the tunnel connects at Windows startup. Turn off the app's own 'start with Windows'." />
+                                                    <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource GhostButton}" Content="Relaunch" Command="{Binding RelaunchCommand}"
+                                                                ToolTip="Closes and reopens the app so it starts out following the current rule." />
+                                                        <Button Style="{StaticResource GhostButton}" Content="✕" Command="{Binding RemoveCommand}" ToolTip="Remove from the list" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+
+                    <DockPanel Grid.Row="6" Margin="2,8,0,0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Opacity="0.55" VerticalAlignment="Center" Margin="12,0,2,0"
+                                    ToolTip="made by mingal">
+                            <Ellipse Width="16" Height="16">
+                                <Ellipse.Fill>
+                                    <ImageBrush ImageSource="pack://application:,,,/assets/avatar.png" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <TextBlock Text="made by mingal" Foreground="#8C8C91" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" TextTrimming="CharacterEllipsis"
+                                   Text="The tunnel covers the whole process: ticking Brave sends the entire browser, not a single tab. Works with any program (games included), TCP and UDP." />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Profiles -->
+            <TabItem Header="VPN profiles">
+                <Grid Margin="0,14,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <Button Style="{StaticResource PrimaryButton}" Content="Import .conf" Command="{Binding ImportProfileCommand}" DockPanel.Dock="Left" />
+                        <Button Style="{StaticResource GhostButton}" Content="Where do I get a Proton .conf?" Command="{Binding ProtonConfLinkCommand}" DockPanel.Dock="Right" Foreground="{StaticResource PinkDark}" />
+                        <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="14,0"
+                                   Text="Any WireGuard works: Proton, Mullvad, AirVPN, your own server… The private key is encrypted for your Windows user." />
+                    </DockPanel>
+                    <Border Grid.Row="1" Background="{StaticResource InfoBg}" CornerRadius="10" Padding="14,10" Margin="0,12,0,0"
+                            Visibility="{Binding HasNoProfiles, Converter={StaticResource BoolVis}}">
+                        <TextBlock Foreground="{StaticResource InfoText}" TextWrapping="Wrap"
+                                   Text="No profiles yet. On Proton: account.protonvpn.com → Downloads → WireGuard configuration → pick a server and download the .conf. Then click Import." />
+                    </Border>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+                        <ItemsControl ItemsSource="{Binding Profiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource CardBorder}" Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" FontSize="15" FontWeight="SemiBold" MinWidth="260" BorderThickness="0,0,0,1" Background="Transparent"
+                                                             ToolTip="Click to rename" />
+                                                    <Border Background="{StaticResource PinkSoft}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                            Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}">
+                                                        <TextBlock Text="in use" Foreground="{StaticResource PinkDark}" FontWeight="SemiBold" FontSize="11" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding EndpointText}" Style="{StaticResource Hint}" Margin="0,6,0,0" />
+                                                <TextBlock Text="{Binding AddressText}" Style="{StaticResource Hint}" />
+                                                <TextBlock Text="{Binding Ipv6Text}" Style="{StaticResource Hint}" />
+                                                <TextBlock Text="{Binding ImportedText}" Style="{StaticResource Hint}" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                                <Button Style="{StaticResource SecondaryButton}" Content="Use this one"
+                                                        Command="{Binding DataContext.UseProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                        Visibility="{Binding IsInactive, Converter={StaticResource BoolVis}}" />
+                                                <Button Style="{StaticResource GhostButton}" Content="Delete" Margin="6,0,0,0"
+                                                        Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- Settings -->
+            <TabItem Header="Settings">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,14,0,0">
+                    <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Startup" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutostartEnabled}" Margin="0,4"
+                                          Content="Start with Windows (connects on its own and opens the apps marked 'Open with it')" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutoConnectOnLaunch}" Margin="0,4" Content="Turn the tunnel on when Moonlight Tunneling opens" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding MinimizeToTray}" Margin="0,4" Content="Closing the window keeps the tunnel running in the tray" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Reconnection" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding AutoReconnect}" Margin="0,4" Content="Reconnect automatically if the tunnel drops" />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="Max attempts in a row" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding MaxReconnectText, UpdateSourceTrigger=LostFocus}" Width="60" Margin="10,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="Waits 2s, 5s, 10s, 20s, 30s between attempts, then stops and tells you instead of looping forever. It also restarts by itself when you switch networks (Ethernet ↔ Wi-Fi)." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Local proxy (SOCKS5 / HTTP)" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Port" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding ProxyPortText, UpdateSourceTrigger=LostFocus}" Width="80" Margin="10,0,0,0" />
+                                    <TextBlock Text="{Binding PortHint}" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="Listens on 127.0.0.1 only and always exits through the VPN. The latency probe uses it, and you can point any program at socks5://127.0.0.1:port." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Kill-switch and IPv6" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Kill-switch (optional, per app): while the tunnel isn't connected (dropped, reconnecting, off, or Moonlight Tunneling closed), Windows Firewall blocks those apps' internet. While the tunnel is up, a tunneled app never uses your normal network, even if the VPN stops answering." />
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                           Text="IPv6: if your ISP gives you IPv6 and the VPN profile doesn't have it, tunneled apps' IPv6 is refused (they fall back to IPv4 instantly) instead of going around the tunnel. If the profile has IPv6, it goes through the VPN too." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Discord Go Live boost" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Discord decides whether Go Live is available when it signs in. The boost lends it the VPN for exactly that moment and then takes it away again, so the call itself runs on your normal connection, at full speed. It stays that way until you close Discord." />
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <TextBlock Text="Hold for" VerticalAlignment="Center" />
+                                    <TextBox Text="{Binding BoostHoldText, UpdateSourceTrigger=LostFocus}" Width="60" Margin="10,0,8,0" />
+                                    <TextBlock Text="seconds after Discord signs in" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BoostStopTunnelAfter}" Margin="0,10,0,0"
+                                          Content="Turn the tunnel off when the boost finishes (only if no other app is tunneled)" />
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BoostOnAutostart}" Margin="0,8,0,0"
+                                          Content="Run the boost automatically when starting with Windows" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Engine (sing-box)" />
+                                <TextBlock Text="{Binding SingBoxInfo}" Style="{StaticResource Hint}" />
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button Style="{StaticResource GhostButton}" Content="Use bundled" Command="{Binding ResetSingBoxCommand}" DockPanel.Dock="Right" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Browse" Command="{Binding BrowseSingBoxCommand}" DockPanel.Dock="Right" Margin="8,0" />
+                                    <TextBox Text="{Binding SingBoxPath, UpdateSourceTrigger=LostFocus}" ToolTip="Empty = use the sing-box that ships with the installer" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="Data" />
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Everything stays on this PC, in %LOCALAPPDATA%\MoonlightTunneling. No telemetry, no update checks. The app's only own traffic is the tunnel itself and a tiny health probe sent through it." />
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Open data folder" Command="{Binding OpenDataFolderCommand}" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Open logs" Command="{Binding OpenLogsCommand}" Margin="8,0,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Log (collapsed by default) -->
+        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Margin="0,10,0,0">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="18,4,18,4">
+                    <ToggleButton x:Name="LogToggle" Style="{StaticResource GhostToggle}" Content="Log" IsChecked="False"
+                                  ToolTip="Show what the tunnel has been doing (useful when reporting a problem)" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Visibility="{Binding IsChecked, ElementName=LogToggle, Converter={StaticResource BoolVis}}">
+                        <Button Style="{StaticResource GhostButton}" Content="Copy" Command="{Binding CopyLogCommand}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Clear" Command="{Binding ClearLogCommand}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Open folder" Command="{Binding OpenLogsCommand}" />
+                    </StackPanel>
+                </DockPanel>
+                <ListBox x:Name="LogList" ItemsSource="{Binding Log}" Height="130" BorderThickness="0" Margin="18,0,18,8"
+                         Visibility="{Binding IsChecked, ElementName=LogToggle, Converter={StaticResource BoolVis}}"
+                         FontFamily="Consolas" FontSize="12" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock TextWrapping="Wrap">
+                                <Run Text="{Binding Time, Mode=OneWay}" Foreground="#A3A1AA" />
+                                <Run Text="  " />
+                                <Run Text="{Binding Message, Mode=OneWay}" Foreground="{Binding Brush, Mode=OneWay}" />
+                            </TextBlock>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

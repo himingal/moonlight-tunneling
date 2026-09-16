@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <ItemGroup>
-    <ProjectReference Include="..\MingalTunnel.Platform\MingalTunnel.Platform.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <InternalsVisibleTo Include="MingalTunnel.Core.Tests" />
-  </ItemGroup>
-</Project>

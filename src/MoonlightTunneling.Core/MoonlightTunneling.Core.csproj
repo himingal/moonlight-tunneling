@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\MoonlightTunneling.Platform\MoonlightTunneling.Platform.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MoonlightTunneling.Core.Tests" />
+  </ItemGroup>
+</Project>
