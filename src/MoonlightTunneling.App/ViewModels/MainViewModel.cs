@@ -21,9 +21,7 @@ public sealed class MainViewModel : ObservableObject
 
     private string _statusTitle = "Off", _statusDetail = "The tunnel is off. No app goes through the VPN.";
     private Brush _statusBrush = Palette.Gray;
-    private string _latencyText = "—", _vpnIp = "—", _directIp = "—", _ipVerdict = "Click Check to compare the VPN exit IP with your normal IP.";
-    private Brush _ipVerdictBrush = Palette.Gray;
-    private bool _checkingIp;
+    private string _latencyText = "—";
     private string? _killSwitchBanner;
     private int _selectedTab;
     private ProfileItem? _activeProfile;
@@ -56,7 +54,6 @@ public sealed class MainViewModel : ObservableObject
         _tunnel.LatencyChanged += ms => _ui.BeginInvoke(() => LatencyText = ms is int v ? $"{v} ms" : "no response");
 
         ToggleTunnelCommand = new AsyncCommand(ToggleTunnelAsync, () => _tunnel.State != TunnelState.Starting);
-        CheckIpCommand = new AsyncCommand(CheckIpAsync, () => !_checkingIp);
         AddAppCommand = new RelayCommand(AddApps);
         ReapplyCommand = new AsyncCommand(ReapplyAsync, () => _tunnel.IsTunUp);
         ImportProfileCommand = new RelayCommand(ImportProfiles);
@@ -84,7 +81,6 @@ public sealed class MainViewModel : ObservableObject
     public ObservableCollection<LogLine> Log { get; } = [];
 
     public ICommand ToggleTunnelCommand { get; }
-    public ICommand CheckIpCommand { get; }
     public ICommand AddAppCommand { get; }
     public ICommand ReapplyCommand { get; }
     public ICommand ImportProfileCommand { get; }
@@ -101,17 +97,12 @@ public sealed class MainViewModel : ObservableObject
     public ICommand BoostReleaseCommand { get; }
 
     // ---------- status ----------
-    public TunnelState State => _tunnel.State;
     public bool IsTunnelActive => _tunnel.IsActive;
     public string ToggleText => _tunnel.State == TunnelState.Starting ? "Connecting…" : _tunnel.IsActive ? "Turn tunnel off" : "Turn tunnel on";
     public string StatusTitle { get => _statusTitle; private set => Set(ref _statusTitle, value); }
     public string StatusDetail { get => _statusDetail; private set => Set(ref _statusDetail, value); }
     public Brush StatusBrush { get => _statusBrush; private set => Set(ref _statusBrush, value); }
     public string LatencyText { get => _latencyText; private set => Set(ref _latencyText, value); }
-    public string VpnIpText { get => _vpnIp; private set => Set(ref _vpnIp, value); }
-    public string DirectIpText { get => _directIp; private set => Set(ref _directIp, value); }
-    public string IpVerdict { get => _ipVerdict; private set => Set(ref _ipVerdict, value); }
-    public Brush IpVerdictBrush { get => _ipVerdictBrush; private set => Set(ref _ipVerdictBrush, value); }
     public string ProxyText => $"local proxy 127.0.0.1:{Settings.ProxyPort}";
     public string? KillSwitchBanner { get => _killSwitchBanner; private set { if (Set(ref _killSwitchBanner, value)) OnPropertyChanged(nameof(HasKillSwitchBanner)); } }
     public bool HasKillSwitchBanner => _killSwitchBanner != null;
@@ -491,7 +482,6 @@ public sealed class MainViewModel : ObservableObject
         StatusDetail = s == TunnelState.Stopped ? "The tunnel is off. No app goes through the VPN." : detail;
         if (s is TunnelState.Stopped or TunnelState.Failed) LatencyText = "—";
         UpdatePortHint();
-        OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(IsTunnelActive));
         OnPropertyChanged(nameof(ToggleText));
         CommandManager.InvalidateRequerySuggested();
@@ -509,36 +499,6 @@ public sealed class MainViewModel : ObservableObject
         KillSwitchBanner = !up && blocked.Count > 0 && IsAdmin
             ? $"Kill-switch engaged: {string.Join(", ", blocked)} {(blocked.Count == 1 ? "has" : "have")} no internet until the tunnel connects."
             : null;
-    }
-
-    private async Task CheckIpAsync()
-    {
-        _checkingIp = true;
-        IpVerdict = "Checking…";
-        IpVerdictBrush = Palette.Gray;
-        try
-        {
-            var directTask = IpCheck.GetPublicIpAsync(null);
-            var vpnTask = _tunnel.IsTunUp ? IpCheck.GetPublicIpAsync(_tunnel.ProxyPort) : Task.FromResult<string?>(null);
-            var direct = await directTask;
-            var vpn = await vpnTask;
-            DirectIpText = direct ?? "failed";
-            VpnIpText = _tunnel.IsTunUp ? vpn ?? "no response" : "tunnel off";
-            (IpVerdict, IpVerdictBrush) = (vpn, direct) switch
-            {
-                (null, _) when !_tunnel.IsTunUp => ("Turn the tunnel on to see the VPN exit IP.", Palette.Gray),
-                (null, _) => ("The VPN didn't answer. Tunneled apps have no way out right now.", Palette.Red),
-                (_, null) => ("VPN is fine; couldn't read your normal IP.", Palette.Yellow),
-                var (v, d) when v == d => ("⚠ Both IPs are the same: the VPN isn't changing the exit.", Palette.Red),
-                _ => ("✔ Tunneled apps exit through a different IP. The rest of the PC stays on your normal one.", Palette.Green),
-            };
-            AppLog.Info($"Exit IP: VPN {VpnIpText} · normal {DirectIpText}.");
-        }
-        finally
-        {
-            _checkingIp = false;
-            CommandManager.InvalidateRequerySuggested();
-        }
     }
 
     // ============================================================

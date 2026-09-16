@@ -61,23 +61,6 @@ public static class ShellLinks
         }
     }
 
-    public static void Create(string lnkPath, string target, string arguments, string workingDir, string? icon)
-    {
-        var link = (IShellLinkW)new CShellLink();
-        try
-        {
-            link.SetPath(target);
-            link.SetArguments(arguments);
-            link.SetWorkingDirectory(workingDir);
-            if (icon != null) link.SetIconLocation(icon, 0);
-            ((IPersistFile)link).Save(lnkPath, true);
-        }
-        finally
-        {
-            Marshal.FinalReleaseComObject(link);
-        }
-    }
-
     /// <summary>Start Menu shortcuts (user + all users) that point at an existing .exe.</summary>
     public static List<ShortcutInfo> ScanStartMenu()
     {

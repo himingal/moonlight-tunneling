@@ -93,7 +93,7 @@
                     </Border>
 
                     <Border Grid.Row="3" Style="{StaticResource CardBorder}" Margin="0,12,0,0"
-                            Background="{StaticResource PinkSoft}" BorderBrush="{StaticResource Pink}"
+                            Background="{StaticResource AccentSoft}" BorderBrush="{StaticResource Accent}"
                             Visibility="{Binding HasDiscord, Converter={StaticResource BoolVis}}">
                         <DockPanel>
                             <Button DockPanel.Dock="Left" Style="{StaticResource PrimaryButton}" Content="Go Live boost" MinWidth="150"
@@ -216,7 +216,7 @@
                     </Grid.RowDefinitions>
                     <DockPanel>
                         <Button Style="{StaticResource PrimaryButton}" Content="Import .conf" Command="{Binding ImportProfileCommand}" DockPanel.Dock="Left" />
-                        <Button Style="{StaticResource GhostButton}" Content="Where do I get a Proton .conf?" Command="{Binding ProtonConfLinkCommand}" DockPanel.Dock="Right" Foreground="{StaticResource PinkDark}" />
+                        <Button Style="{StaticResource GhostButton}" Content="Where do I get a Proton .conf?" Command="{Binding ProtonConfLinkCommand}" DockPanel.Dock="Right" Foreground="{StaticResource AccentDark}" />
                         <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="14,0"
                                    Text="Any WireGuard works: Proton, Mullvad, AirVPN, your own server… The private key is encrypted for your Windows user." />
                     </DockPanel>
@@ -239,9 +239,9 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}" FontSize="15" FontWeight="SemiBold" MinWidth="260" BorderThickness="0,0,0,1" Background="Transparent"
                                                              ToolTip="Click to rename" />
-                                                    <Border Background="{StaticResource PinkSoft}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                    <Border Background="{StaticResource AccentSoft}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
                                                             Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}">
-                                                        <TextBlock Text="in use" Foreground="{StaticResource PinkDark}" FontWeight="SemiBold" FontSize="11" />
+                                                        <TextBlock Text="in use" Foreground="{StaticResource AccentDark}" FontWeight="SemiBold" FontSize="11" />
                                                     </Border>
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding EndpointText}" Style="{StaticResource Hint}" Margin="0,6,0,0" />

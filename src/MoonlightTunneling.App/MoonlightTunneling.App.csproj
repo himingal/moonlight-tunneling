@@ -8,6 +8,9 @@
     <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyTitle>Moonlight Tunneling</AssemblyTitle>
+    <!-- WFO0003 wants DPI set through WinForms; this is a WPF app that uses WinForms
+         only for the tray icon, so DPI awareness correctly lives in the manifest. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <!-- Debug runs unelevated so the UI can be worked on without UAC; the tunnel itself refuses to start there. -->

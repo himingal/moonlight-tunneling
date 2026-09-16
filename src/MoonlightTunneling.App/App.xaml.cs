@@ -50,6 +50,12 @@ public partial class App : Application
             AppLog.Error($"Unexpected error: {ex.GetType().Name}: {ex.Message}{inner} {where}".Trim());
             a.Handled = true;
         };
+        // Fire-and-forget work (kill-switch sync, live refresh) must never fail silently.
+        TaskScheduler.UnobservedTaskException += (_, a) =>
+        {
+            AppLog.Error("Background task failed: " + a.Exception.GetBaseException().Message);
+            a.SetObserved();
+        };
         SessionEnding += (_, _) =>
         {
             // Put kill-switch rules back before Windows ends the session, so an
@@ -141,12 +147,13 @@ public partial class App : Application
             Render(w, Path.Combine(dir, $"{names[tab]}.png"));
         }
 
-        var add = new AddAppWindow { Owner = w, WindowStartupLocation = WindowStartupLocation.Manual, Left = -4000, Top = 0, ShowInTaskbar = false };
+        // Well-known apps only, instead of everything that happens to run on the dev box.
+        var demo = AppCatalog.DetectInstalledCurated().Select(AppCatalog.IconSource).OfType<string>().ToList();
+        foreach (var extra in new[] { @"C:\Program Files (x86)\Steam\steam.exe", @"C:\Riot Games\Riot Client\RiotClientServices.exe" })
+            if (File.Exists(extra)) demo.Add(extra);
+        var add = new AddAppWindow { Owner = w, WindowStartupLocation = WindowStartupLocation.Manual, Left = -4000, Top = 0, ShowInTaskbar = false, DemoPaths = demo };
         add.Show();
-        await Task.Delay(6000);
-        // Keep the README picture to well-known apps instead of everything running on the dev box.
-        add.Filter.Text = "Program Files";
-        await Task.Delay(500);
+        await Task.Delay(2500);
         Render(add, Path.Combine(dir, "add-app.png"));
         add.Close();
         _exiting = true;

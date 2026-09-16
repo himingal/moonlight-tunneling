@@ -593,6 +593,7 @@ public sealed partial class TunnelSupervisor : IDisposable
     {
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
         _stopping = true;
+        _netDebounce?.Dispose();
         KillProcess();
         Clash?.Dispose();
         _job.Dispose();

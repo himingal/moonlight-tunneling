@@ -15,7 +15,7 @@ public static class RuleSetWriter
     /// sing-box decides at startup whether it needs process lookups at all, and
     /// an empty set would leave that off for rules added later.
     /// </summary>
-    public const string Placeholder = "^MINGAL_TUNNEL_NO_APP_SELECTED$";
+    public const string Placeholder = "^MOONLIGHT_TUNNELING_NO_APP_SELECTED$";
 
     public static string Build(IEnumerable<TunneledApp> apps)
     {

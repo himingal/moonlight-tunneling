@@ -15,8 +15,6 @@ public sealed class KillSwitch
     private HashSet<string>? _applied;
     private bool _warnedNoAdmin;
 
-    public int EngagedCount => _applied?.Count ?? 0;
-
     public async Task SyncAsync(bool tunnelUp, IReadOnlyList<TunneledApp> apps)
     {
         var desired = tunnelUp

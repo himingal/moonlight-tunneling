@@ -27,8 +27,15 @@ public static class ProcessPaths
     /// <summary>All processes whose image path can be read. Cheap enough to poll every few seconds.</summary>
     public static List<ProcessEntry> Snapshot()
     {
-        var pids = new uint[4096];
-        if (!Native.EnumProcesses(pids, pids.Length * sizeof(uint), out int needed)) return [];
+        // EnumProcesses can't say how much room it needed: grow until it stops filling the buffer.
+        var pids = new uint[1024];
+        int needed;
+        while (true)
+        {
+            if (!Native.EnumProcesses(pids, pids.Length * sizeof(uint), out needed)) return [];
+            if (needed < pids.Length * sizeof(uint)) break;
+            pids = new uint[pids.Length * 2];
+        }
         int count = needed / sizeof(uint);
         var list = new List<ProcessEntry>(count);
         for (int i = 0; i < count; i++)

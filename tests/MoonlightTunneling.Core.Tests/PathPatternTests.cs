@@ -43,8 +43,8 @@ public class PathPatternTests
         var p = PathPattern.TryStorePackagePattern(@"C:\Program Files\WindowsApps\5319275A.WhatsAppDesktop_2.2450.6.0_x64__cv1g1gvanyjgm\WhatsApp.exe");
         Assert.NotNull(p);
         var rx = PathPattern.ToRegex(p!);
-        Assert.True(rx.IsMatch(@"C:\Program Files\WindowsApps\5319275A.WhatsAppDesktop_2.2511.1.0_x64__cv1g1gvanyjgm\WhatsApp.exe"));
-        Assert.False(rx.IsMatch(@"C:\Program Files\WindowsApps\Other_1.0_x64__cv1g1gvanyjgm\WhatsApp.exe"));
+        Assert.Matches(rx, @"C:\Program Files\WindowsApps\5319275A.WhatsAppDesktop_2.2511.1.0_x64__cv1g1gvanyjgm\WhatsApp.exe");
+        Assert.DoesNotMatch(rx, @"C:\Program Files\WindowsApps\Other_1.0_x64__cv1g1gvanyjgm\WhatsApp.exe");
     }
 
     [Fact]

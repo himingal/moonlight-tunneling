@@ -51,7 +51,7 @@ public static class ScheduledTaskAutostart
               </Actions>
             </Task>
             """;
-        var tmp = Path.Combine(Path.GetTempPath(), $"mingaltunnel-task-{Guid.NewGuid():N}.xml");
+        var tmp = Path.Combine(Path.GetTempPath(), $"moonlight-tunneling-task-{Guid.NewGuid():N}.xml");
         await File.WriteAllTextAsync(tmp, xml, Encoding.Unicode);
         try
         {

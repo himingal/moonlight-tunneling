@@ -33,6 +33,11 @@ public partial class AddAppWindow : Window
 
     public List<TunneledApp> Result { get; } = [];
 
+#if DEBUG
+    /// <summary>Screenshot mode: show these executables instead of scanning the machine.</summary>
+    public IReadOnlyList<string>? DemoPaths { get; init; }
+#endif
+
     public AddAppWindow()
     {
         InitializeComponent();
@@ -49,6 +54,15 @@ public partial class AddAppWindow : Window
         var self = Environment.ProcessPath ?? "";
         var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
 
+#if DEBUG
+        if (DemoPaths != null)
+        {
+            foreach (var p in DemoPaths) _network.Add(new Candidate { Name = AppCatalog.FriendlyName(p), Path = p, Icon = IconCache.Get(p) });
+            NetworkLoading.Visibility = Visibility.Collapsed;
+            StartMenuLoading.Visibility = Visibility.Collapsed;
+            return;
+        }
+#endif
         var net = await Task.Run(() =>
         {
             var pids = ConnectionTables.PidsWithSockets();

@@ -62,7 +62,7 @@ public sealed class AsyncCommand(Func<object?, Task> run, Func<object?, bool>? c
         }
         catch (Exception ex)
         {
-            Core.AppLog.Error("Erro: " + ex.Message);
+            Core.AppLog.Error("Error: " + ex.Message);
         }
         finally
         {

@@ -3,7 +3,7 @@ using System.Text;
 
 namespace MoonlightTunneling.Platform;
 
-internal static partial class Native
+internal static class Native
 {
     public const uint PROCESS_QUERY_INFORMATION = 0x0400;
     public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
