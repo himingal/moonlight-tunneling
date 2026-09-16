@@ -21,6 +21,7 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add("Open Mingal Tunnel", null, (_, _) => show());
         _toggle = new Forms.ToolStripMenuItem("Turn tunnel on", null, (_, _) => vm.ToggleTunnelCommand.Execute(null));
         menu.Items.Add(_toggle);
+        menu.Items.Add("Discord Go Live boost", null, (_, _) => vm.BoostCommand.Execute(null));
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => exit());
         _icon.ContextMenuStrip = menu;

@@ -37,6 +37,14 @@ It replaces [discord-tunneling](https://github.com/himingal/discord-tunneling). 
 | 🔍 **Exit IP check** | Compares your exit IP through the VPN with your normal IP. |
 | 🚀 **Starts with Windows** | No UAC prompt at logon. Opens your chosen apps once the tunnel is up. |
 
+## Discord Go Live boost
+
+Discord decides whether Go Live is available when it signs in, so it only needs the VPN for that one moment. That's the trick people did by hand: connect the VPN, open Discord, disconnect the VPN, and the stream keeps working.
+
+**Go Live boost** does the whole thing in one click. It turns the tunnel on, reopens Discord through it, waits until Discord has signed in through the VPN, holds for a while (60s by default), then hands Discord back to your normal connection and turns the tunnel off if nothing else needs it. The call itself then runs at full speed with no tunnel in the way, and stays that way until you close Discord.
+
+In Settings you can change the hold, keep the tunnel up afterwards, or run the boost automatically at Windows startup. Prefer Discord tunneled the whole time? Just tick it in the list and ignore the boost. One thing that doesn't mix: the kill-switch blocks Discord whenever the tunnel isn't connected, which is exactly what the boost does on purpose, so the boost refuses to run while it's on.
+
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/add-app.png" alt="Add app"><br><sub>Add any program: apps using the network right now, the Start menu, a single .exe, or a whole folder (games with launchers).</sub></td>

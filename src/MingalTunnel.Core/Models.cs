@@ -48,6 +48,12 @@ public sealed class AppSettings
     public bool LegacyDisabled { get; set; }
     public bool TrayHintShown { get; set; }
     public bool FirstRunDone { get; set; }
+
+    // Discord Go Live boost: Discord only needs the VPN while it signs in, so
+    // the tunnel can be handed back afterwards and the session keeps working.
+    public int BoostHoldSeconds { get; set; } = 60;
+    public bool BoostStopTunnelAfter { get; set; } = true;
+    public bool BoostOnAutostart { get; set; }
 }
 
 public sealed class VpnProfile

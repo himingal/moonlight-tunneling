@@ -29,6 +29,8 @@ public sealed class MainViewModel : ObservableObject
     private ProfileItem? _activeProfile;
     private bool _autostart;
     private string _singBoxInfo = "";
+    private CancellationTokenSource? _boostCts;
+    private string? _boostStatus;
     private string _portHint = "";
 
     public MainViewModel(Dispatcher ui)
@@ -59,6 +61,8 @@ public sealed class MainViewModel : ObservableObject
         OpenLogsCommand = new RelayCommand(() => OpenFolder(AppPaths.LogsDir));
         CopyLogCommand = new RelayCommand(() => { try { Clipboard.SetText(string.Join(Environment.NewLine, Log)); } catch { } });
         ClearLogCommand = new RelayCommand(() => Log.Clear());
+        BoostCommand = new AsyncCommand(() => BoostAsync(interactive: true), () => !IsBoosting && IsAdmin);
+        BoostReleaseCommand = new RelayCommand(() => _boostCts?.Cancel(), () => IsBoosting);
         ProtonConfLinkCommand = new RelayCommand(() => Process.Start(new ProcessStartInfo("https://account.protonvpn.com/downloads") { UseShellExecute = true }));
     }
 
@@ -86,6 +90,8 @@ public sealed class MainViewModel : ObservableObject
     public ICommand CopyLogCommand { get; }
     public ICommand ClearLogCommand { get; }
     public ICommand ProtonConfLinkCommand { get; }
+    public ICommand BoostCommand { get; }
+    public ICommand BoostReleaseCommand { get; }
 
     // ---------- status ----------
     public TunnelState State => _tunnel.State;
@@ -172,6 +178,32 @@ public sealed class MainViewModel : ObservableObject
 
     public string PortHint { get => _portHint; private set => Set(ref _portHint, value); }
 
+    // ---------- Discord Go Live boost ----------
+    public bool IsBoosting => _boostCts != null;
+    public bool IsNotBoosting => _boostCts == null;
+    public bool HasDiscord => Apps.Any(IsDiscord);
+
+    public string BoostText => _boostStatus ??
+        $"Discord only needs the VPN while it signs in. Boost reopens Discord through the tunnel, holds it for {Settings.BoostHoldSeconds}s, then hands it back to your normal connection - Go Live keeps working, at full speed.";
+
+    public string BoostHoldText
+    {
+        get => Settings.BoostHoldSeconds.ToString();
+        set
+        {
+            if (int.TryParse(value, out int n) && n is >= 5 and <= 600)
+            {
+                Settings.BoostHoldSeconds = n;
+                QueueSave();
+                OnPropertyChanged(nameof(BoostText));
+            }
+            OnPropertyChanged();
+        }
+    }
+
+    public bool BoostStopTunnelAfter { get => Settings.BoostStopTunnelAfter; set { Settings.BoostStopTunnelAfter = value; OnPropertyChanged(); QueueSave(); } }
+    public bool BoostOnAutostart { get => Settings.BoostOnAutostart; set { Settings.BoostOnAutostart = value; OnPropertyChanged(); QueueSave(); } }
+
     public string SingBoxPath
     {
         get => Settings.SingBoxPathOverride ?? "";
@@ -226,6 +258,7 @@ public sealed class MainViewModel : ObservableObject
             Apps.Add(new AppRowViewModel(a, this));
         RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
         SaveNow();
+        OnPropertyChanged(nameof(HasDiscord));
 
         UpdatePortHint();
         await RefreshSingBoxInfoAsync();
@@ -241,7 +274,11 @@ public sealed class MainViewModel : ObservableObject
         {
             if (autostart) await WaitForNetworkAsync(TimeSpan.FromSeconds(180));
             await StartTunnelAsync(interactive: !autostart);
-            if (autostart && _tunnel.IsTunUp) await LaunchAutostartAppsAsync();
+            if (autostart && _tunnel.IsTunUp)
+            {
+                await LaunchAutostartAppsAsync();
+                if (Settings.BoostOnAutostart && HasDiscord) await BoostAsync(interactive: false);
+            }
         }
         else if (ActiveProfile == null && !autostart)
         {
@@ -492,6 +529,177 @@ public sealed class MainViewModel : ObservableObject
     }
 
     // ============================================================
+    //  Discord Go Live boost
+    // ============================================================
+
+    private static bool IsDiscord(AppRowViewModel r) =>
+        r.Model.CuratedKey is "discord" or "discord-ptb" or "discord-canary";
+
+    /// <summary>
+    /// Mirrors what people did by hand with a VPN client: connect, open Discord,
+    /// then disconnect. Discord only needs the VPN while it signs in - Go Live
+    /// availability is decided for that session - so afterwards it can (and
+    /// should) run on the normal connection, at full speed and with no tunnel
+    /// overhead. The boost does the whole dance: tunnel up, Discord restarted
+    /// through it, a hold while it signs in, then the tunnel handed back.
+    /// </summary>
+    public async Task BoostAsync(bool interactive)
+    {
+        var row = Apps.FirstOrDefault(IsDiscord);
+        if (row == null)
+        {
+            if (interactive) Inform("Discord isn't in the list. Add it with \"Add app\" first.");
+            return;
+        }
+        if (!IsAdmin)
+        {
+            if (interactive) Inform("The boost needs Mingal Tunnel running as Administrator, because it has to turn the tunnel on.", MessageBoxImage.Warning);
+            return;
+        }
+        if (ActiveProfile == null)
+        {
+            if (interactive) Inform("Import a WireGuard .conf first (VPN profiles tab).");
+            SelectedTab = 1;
+            return;
+        }
+        // A kill-switch on Discord is the opposite of this feature: releasing
+        // the tunnel would cut Discord off instead of handing it to the network.
+        if (row.KillSwitch)
+        {
+            if (interactive) Inform($"{row.Name} has the kill-switch on, which blocks it whenever the tunnel isn't connected - the exact thing the boost relies on. Turn the kill-switch off for it first.", MessageBoxImage.Warning);
+            return;
+        }
+
+        bool tunnelWasOff = !_tunnel.IsTunUp;
+        bool wasEnabled = row.Enabled;
+        var cts = new CancellationTokenSource();
+        _boostCts = cts;
+        RaiseBoostChanged();
+        try
+        {
+            if (!_tunnel.IsTunUp)
+            {
+                SetBoostStatus("Turning the tunnel on\u2026");
+                await StartTunnelAsync(interactive);
+                if (!_tunnel.IsTunUp)
+                {
+                    AppLog.Warn("Boost stopped: the tunnel didn't come up.");
+                    return;
+                }
+            }
+            if (!wasEnabled)
+            {
+                // Temporary: the saved preference is restored on release.
+                row.SetEnabledTemporarily(true);
+                RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
+                SetBoostStatus("Routing Discord through the tunnel\u2026");
+                await Task.Delay(3000, cts.Token); // sing-box picks the rule-set change up
+            }
+
+            SetBoostStatus("Reopening Discord through the tunnel\u2026");
+            int killed = await Task.Run(() => ProcessPaths.KillWhere(row.Matcher.IsMatch, TimeSpan.FromSeconds(6)), cts.Token);
+            await Task.Delay(1200, cts.Token);
+            if (AppCatalog.GetLaunchCommand(row.Model) is { } cmd) DeElevatedLauncher.Launch(cmd.Exe, cmd.Args);
+            else if (interactive) Inform($"Open {row.Name} now - it will sign in through the tunnel.");
+            AppLog.Info($"Boost: {row.Name} restarted through the tunnel ({killed} process(es) closed).");
+
+            SetBoostStatus("Waiting for Discord to sign in through the VPN\u2026");
+            if (!await WaitForTunneledAsync(row, TimeSpan.FromSeconds(45), cts.Token))
+                AppLog.Warn("Boost: Discord hasn't opened a connection through the tunnel yet; holding anyway.");
+
+            for (int left = Settings.BoostHoldSeconds; left > 0; left--)
+            {
+                SetBoostStatus($"Discord is signed in through the VPN. Handing it back in {left}s\u2026 (Release now does it immediately)");
+                await Task.Delay(1000, cts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            AppLog.Info("Boost: released early.");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Boost failed: " + ex.Message);
+        }
+        finally
+        {
+            await ReleaseBoostAsync(row, wasEnabled, tunnelWasOff);
+            _boostCts = null;
+            cts.Dispose();
+            SetBoostStatus(null);
+            RaiseBoostChanged();
+        }
+    }
+
+    private async Task ReleaseBoostAsync(AppRowViewModel row, bool wasEnabled, bool tunnelWasOff)
+    {
+        try
+        {
+            if (!wasEnabled && row.Enabled)
+            {
+                row.SetEnabledTemporarily(false);
+                RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
+            }
+            // Only turn off a tunnel the boost itself started, and only when
+            // nothing else is relying on it.
+            // Discord itself doesn't count: the whole point is handing it back.
+            bool othersTunneled = Settings.Apps.Any(a => a.Enabled && !ReferenceEquals(a, row.Model));
+            if (tunnelWasOff && Settings.BoostStopTunnelAfter && !othersTunneled && _tunnel.IsActive)
+            {
+                SetBoostStatus("Turning the tunnel back off\u2026");
+                await _tunnel.StopAsync();
+                AppLog.Success($"Boost done: {row.Name} is back on your normal connection and the tunnel is off. Go Live keeps working until you close {row.Name}.");
+                return;
+            }
+            // The tunnel stays up for the other apps, so drop Discord's tunneled
+            // connections instead: it reconnects directly right now, which is
+            // what closing a VPN client used to do.
+            if (_tunnel.Clash is { } clash)
+            {
+                var conns = await clash.GetConnectionsAsync();
+                int closed = 0;
+                foreach (var c in conns ?? [])
+                    if (c.ViaVpn && c.ProcessPath != null && row.Matcher.IsMatch(c.ProcessPath))
+                    {
+                        await clash.CloseAsync(c.Id);
+                        closed++;
+                    }
+                AppLog.Success($"Boost done: {row.Name} is back on your normal connection ({closed} tunneled connection(s) closed). Go Live keeps working until you close {row.Name}.");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Boost release failed: " + ex.Message);
+        }
+    }
+
+    private async Task<bool> WaitForTunneledAsync(AppRowViewModel row, TimeSpan timeout, CancellationToken ct)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var conns = _tunnel.Clash != null ? await _tunnel.Clash.GetConnectionsAsync() : null;
+            if (conns != null && conns.Any(c => c.ViaVpn && c.ProcessPath != null && row.Matcher.IsMatch(c.ProcessPath)))
+                return true;
+            await Task.Delay(2000, ct);
+        }
+        return false;
+    }
+
+    private void SetBoostStatus(string? status)
+    {
+        _boostStatus = status;
+        OnPropertyChanged(nameof(BoostText));
+    }
+
+    private void RaiseBoostChanged()
+    {
+        OnPropertyChanged(nameof(IsBoosting));
+        OnPropertyChanged(nameof(IsNotBoosting));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    // ============================================================
     //  Apps
     // ============================================================
 
@@ -532,6 +740,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         Apps.Remove(row);
         Settings.Apps.Remove(row.Model);
+        OnPropertyChanged(nameof(HasDiscord));
         if (row.Model.CuratedKey != null) Settings.HiddenCuratedKeys.Add(row.Model.CuratedKey);
         RuleSetWriter.Write(Settings.Apps, AppPaths.RuleSetFile);
         QueueSave();
@@ -557,6 +766,7 @@ public sealed class MainViewModel : ObservableObject
             var row = new AppRowViewModel(app, this);
             Apps.Insert(0, row);
             OnAppChanged(row, AppChange.Enabled);
+            OnPropertyChanged(nameof(HasDiscord));
         }
         QueueSave();
     }
