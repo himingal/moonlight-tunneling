@@ -7,7 +7,7 @@
     <RootNamespace>MingalTunnel.App</RootNamespace>
     <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AssemblyTitle>Mingal Tunnel</AssemblyTitle>
+    <AssemblyTitle>Moonlight Tunneling</AssemblyTitle>
   </PropertyGroup>
 
   <!-- Debug runs unelevated so the UI can be worked on without UAC; the tunnel itself refuses to start there. -->

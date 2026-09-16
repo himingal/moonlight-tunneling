@@ -113,7 +113,7 @@ public partial class AddAppWindow : Window
         if (string.Equals(dlg.FolderName.TrimEnd('\\') + "\\", root, StringComparison.OrdinalIgnoreCase) ||
             dlg.FolderName.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.OrdinalIgnoreCase))
         {
-            MessageBox.Show(this, "Pick the program or game folder, not a drive root or the Windows folder.", "Mingal Tunnel");
+            MessageBox.Show(this, "Pick the program or game folder, not a drive root or the Windows folder.", "Moonlight Tunneling");
             return;
         }
         Result.Add(AppCatalog.FromFolder(dlg.FolderName));
@@ -126,7 +126,7 @@ public partial class AddAppWindow : Window
             .GroupBy(c => c.Path, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
         if (chosen.Count == 0)
         {
-            MessageBox.Show(this, "Tick at least one app in the list, or use Pick .exe / folder.", "Mingal Tunnel");
+            MessageBox.Show(this, "Tick at least one app in the list, or use Pick .exe / folder.", "Moonlight Tunneling");
             return;
         }
         foreach (var c in chosen) Result.Add(AppCatalog.FromExecutable(c.Path, c.Name));

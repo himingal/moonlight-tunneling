@@ -3,7 +3,7 @@ namespace MingalTunnel.Platform;
 /// <summary>
 /// Per-app kill-switch built on Windows Firewall. All rules share one name so
 /// they can be listed and removed together (and by the uninstaller). Rules are
-/// persistent: if Mingal Tunnel isn't running at all, apps under kill-switch
+/// persistent: if Moonlight Tunneling isn't running at all, apps under kill-switch
 /// stay offline instead of silently using the normal connection.
 /// </summary>
 public static class FirewallRules

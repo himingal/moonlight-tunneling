@@ -124,13 +124,13 @@ public sealed partial class TunnelSupervisor : IDisposable
         try
         {
             if (!File.Exists(o.SingBoxExe))
-                throw new TunnelException($"sing-box.exe not found at {o.SingBoxExe}. Reinstall Mingal Tunnel or point to another copy in Settings.");
+                throw new TunnelException($"sing-box.exe not found at {o.SingBoxExe}. Reinstall Moonlight Tunneling or point to another copy in Settings.");
             var version = await SingBoxBinary.GetVersionAsync(o.SingBoxExe)
                           ?? throw new TunnelException($"{o.SingBoxExe} failed to run. An antivirus may have blocked it.");
             if (version < SingBoxBinary.Minimum)
                 throw new TunnelException($"sing-box {version} is too old (minimum {SingBoxBinary.Minimum}).");
             if (o.EnableTun && !Elevation.IsAdministrator())
-                throw new TunnelException("Mingal Tunnel must run as Administrator to create the virtual network adapter (TUN).");
+                throw new TunnelException("Moonlight Tunneling must run as Administrator to create the virtual network adapter (TUN).");
 
             var foreign = ProcessPaths.Snapshot()
                 .Where(p => Path.GetFileName(p.Path).Equals("sing-box.exe", StringComparison.OrdinalIgnoreCase) && p.Pid != _proc?.Id)
@@ -575,7 +575,7 @@ public sealed partial class TunnelSupervisor : IDisposable
             : t.Contains("missing default interface") || t.Contains("no such network interface")
                 ? "The network wasn't ready yet."
             : t.Contains("access is denied") || t.Contains("acesso negado")
-                ? "Access denied; Mingal Tunnel must run as Administrator."
+                ? "Access denied; Moonlight Tunneling must run as Administrator."
             : "";
         var last = tail.Split('\n').LastOrDefault(l => l.Contains("FATAL") || l.Contains("ERROR")) ?? tail.Split('\n').LastOrDefault() ?? "";
         return string.Join(" ", new[] { prefix, hint, string.IsNullOrWhiteSpace(last) ? "" : $"Details: {last}" }.Where(s => s.Length > 0));

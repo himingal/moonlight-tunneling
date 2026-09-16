@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 namespace MingalTunnel.Platform;
 
 /// <summary>
-/// Ties child processes to this process's lifetime: when Mingal Tunnel exits
+/// Ties child processes to this process's lifetime: when Moonlight Tunneling exits
 /// or crashes, Windows kills sing-box too. An orphaned sing-box would keep a
 /// TUN adapter and the default route with nobody supervising it, and a later
 /// start would spawn a second instance on the same WireGuard key, which makes

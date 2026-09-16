@@ -1,11 +1,11 @@
 ﻿; ============================================================
-;  Mingal Tunnel - Inno Setup script
+;  Moonlight Tunneling - Inno Setup script
 ;  Build with build\publish.ps1 (publishes the app into dist\app
 ;  and then compiles this file).
 ; ============================================================
 
-#define MyAppName "Mingal Tunnel"
-#define MyAppVersion "1.0.2"
+#define MyAppName "Moonlight Tunneling"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "mingal"
 #define MyAppExeName "MingalTunnel.exe"
 
@@ -14,7 +14,7 @@ AppId={{6C1E5B7A-3F2D-4B8E-9A61-2D7C0F4E8B19}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-AppPublisherURL=https://github.com/himingal
+AppPublisherURL=https://github.com/himingal/moonlight-tunneling
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Program Files, not the user profile: the app runs elevated (and can autostart
@@ -25,7 +25,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 OutputDir=output
-OutputBaseFilename=MingalTunnel-Setup-{#MyAppVersion}
+OutputBaseFilename=MoonlightTunneling-Setup-{#MyAppVersion}
 SetupIconFile=..\assets\app.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
@@ -46,6 +46,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Wintun needs no separate driver install step: sing-box loads wintun.dll and
 ; Wintun installs its (signed) driver on the fly when the adapter is created.
 Source: "..\dist\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[InstallDelete]
+; Shortcuts left behind by versions released as "Mingal Tunnel".
+Type: files; Name: "{autoprograms}\Mingal Tunnel.lnk"
+Type: files; Name: "{autodesktop}\Mingal Tunnel.lnk"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

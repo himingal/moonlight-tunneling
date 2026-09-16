@@ -5,7 +5,7 @@ using System.Text;
 namespace MingalTunnel.Platform;
 
 /// <summary>
-/// Starts programs as the normal (non-elevated) user even though Mingal Tunnel
+/// Starts programs as the normal (non-elevated) user even though Moonlight Tunneling
 /// itself runs as Administrator. Launching Discord or a browser elevated would
 /// break drag and drop, notifications and file dialogs, and hand them admin
 /// rights they have no business having. The token is borrowed from the desktop

@@ -21,7 +21,12 @@ public partial class App : Application
         base.OnStartup(e);
         bool autostart = e.Args.Contains("--autostart", StringComparer.OrdinalIgnoreCase);
 
-        _instance = new Mutex(true, "MingalTunnel.SingleInstance", out bool first);
+        bool devRender = false;
+#if DEBUG
+        // Screenshot/stress renders run beside a real installed copy.
+        devRender = e.Args.Contains("--snapshot") || e.Args.Contains("--stress-log");
+#endif
+        _instance = new Mutex(true, devRender ? "MingalTunnel.DevRender." + Environment.ProcessId : "MingalTunnel.SingleInstance", out bool first);
         if (!first)
         {
             // Second launch just brings the running window forward.
@@ -29,7 +34,7 @@ public partial class App : Application
             Shutdown();
             return;
         }
-        _activate = new EventWaitHandle(false, EventResetMode.AutoReset, "MingalTunnel.Activate");
+        _activate = new EventWaitHandle(false, EventResetMode.AutoReset, devRender ? "MingalTunnel.DevActivate." + Environment.ProcessId : "MingalTunnel.Activate");
         new Thread(() =>
         {
             while (_activate.WaitOne()) Dispatcher.BeginInvoke(ShowMain);
@@ -95,10 +100,10 @@ public partial class App : Application
         if (_vm.IsTunnelActive)
         {
             var owner = _window is { IsVisible: true } ? _window : null;
-            var text = "Exiting Mingal Tunnel turns the tunnel off. Apps with the kill-switch stay offline until you open it again.\n\nExit anyway?";
+            var text = "Exiting Moonlight Tunneling turns the tunnel off. Apps with the kill-switch stay offline until you open it again.\n\nExit anyway?";
             var r = owner != null
-                ? MessageBox.Show(owner, text, "Mingal Tunnel", MessageBoxButton.YesNo, MessageBoxImage.Question)
-                : MessageBox.Show(text, "Mingal Tunnel", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                ? MessageBox.Show(owner, text, "Moonlight Tunneling", MessageBoxButton.YesNo, MessageBoxImage.Question)
+                : MessageBox.Show(text, "Moonlight Tunneling", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (r != MessageBoxResult.Yes) return;
         }
         _exiting = true;

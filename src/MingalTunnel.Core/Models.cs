@@ -33,7 +33,7 @@ public sealed class TunneledApp
 
 public sealed class AppSettings
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public List<TunneledApp> Apps { get; set; } = [];
     public List<string> HiddenCuratedKeys { get; set; } = [];
     public string? ActiveProfileId { get; set; }
@@ -51,7 +51,7 @@ public sealed class AppSettings
 
     // Discord Go Live boost: Discord only needs the VPN while it signs in, so
     // the tunnel can be handed back afterwards and the session keeps working.
-    public int BoostHoldSeconds { get; set; } = 60;
+    public int BoostHoldSeconds { get; set; } = 20;
     public bool BoostStopTunnelAfter { get; set; } = true;
     public bool BoostOnAutostart { get; set; }
 }

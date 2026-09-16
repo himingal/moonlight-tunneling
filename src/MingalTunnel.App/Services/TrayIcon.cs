@@ -15,10 +15,10 @@ public sealed class TrayIcon : IDisposable
     {
         _vm = vm;
         using var stream = Application.GetResourceStream(new Uri("pack://application:,,,/assets/app.ico"))!.Stream;
-        _icon = new Forms.NotifyIcon { Icon = new System.Drawing.Icon(stream), Visible = true, Text = "Mingal Tunnel" };
+        _icon = new Forms.NotifyIcon { Icon = new System.Drawing.Icon(stream), Visible = true, Text = "Moonlight Tunneling" };
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Open Mingal Tunnel", null, (_, _) => show());
+        menu.Items.Add("Open Moonlight Tunneling", null, (_, _) => show());
         _toggle = new Forms.ToolStripMenuItem("Turn tunnel on", null, (_, _) => vm.ToggleTunnelCommand.Execute(null));
         menu.Items.Add(_toggle);
         menu.Items.Add("Discord Go Live boost", null, (_, _) => vm.BoostCommand.Execute(null));
@@ -35,7 +35,7 @@ public sealed class TrayIcon : IDisposable
     {
         if (e.PropertyName is nameof(MainViewModel.StatusTitle) or nameof(MainViewModel.ToggleText))
         {
-            _icon.Text = Trim($"Mingal Tunnel · {_vm.StatusTitle}", 63);
+            _icon.Text = Trim($"Moonlight Tunneling · {_vm.StatusTitle}", 63);
             _toggle.Text = _vm.ToggleText;
         }
     }

@@ -26,7 +26,7 @@ public static class ScheduledTaskAutostart
         var xml = $"""
             <?xml version="1.0" encoding="UTF-16"?>
             <Task version="1.3" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-              <RegistrationInfo><Description>Mingal Tunnel - per-app VPN split tunneling</Description></RegistrationInfo>
+              <RegistrationInfo><Description>Moonlight Tunneling - per-app VPN split tunneling</Description></RegistrationInfo>
               <Triggers>
                 <LogonTrigger><Enabled>true</Enabled><UserId>{SecurityElement.Escape(user)}</UserId><Delay>PT10S</Delay></LogonTrigger>
               </Triggers>

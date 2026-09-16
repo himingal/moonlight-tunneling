@@ -38,6 +38,13 @@ public sealed class MainViewModel : ObservableObject
         _ui = ui;
         Settings = JsonStore.LoadOrDefault<AppSettings>(AppPaths.SettingsFile);
         IsAdmin = Elevation.IsAdministrator();
+        if (Settings.SchemaVersion < 2)
+        {
+            // 1.1: the boost hold default went from 60s to 20s; carry it over
+            // unless it had been customised.
+            if (Settings.BoostHoldSeconds == 60) Settings.BoostHoldSeconds = 20;
+            Settings.SchemaVersion = 2;
+        }
 
         _liveTimer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, (_, _) => _ = RefreshLiveAsync(), ui);
         _liveTimer.Stop();
@@ -61,7 +68,7 @@ public sealed class MainViewModel : ObservableObject
         OpenLogsCommand = new RelayCommand(() => OpenFolder(AppPaths.LogsDir));
         CopyLogCommand = new RelayCommand(() => { try { Clipboard.SetText(string.Join(Environment.NewLine, Log)); } catch { } });
         ClearLogCommand = new RelayCommand(() => Log.Clear());
-        BoostCommand = new AsyncCommand(() => BoostAsync(interactive: true), () => !IsBoosting && IsAdmin);
+        BoostCommand = new AsyncCommand(() => BoostAsync(interactive: true), () => !IsBoosting);
         BoostReleaseCommand = new RelayCommand(() => _boostCts?.Cancel(), () => IsBoosting);
         ProtonConfLinkCommand = new RelayCommand(() => Process.Start(new ProcessStartInfo("https://account.protonvpn.com/downloads") { UseShellExecute = true }));
     }
@@ -247,7 +254,7 @@ public sealed class MainViewModel : ObservableObject
             if (Log.Count > 500) Log.RemoveAt(0);
         });
 
-        AppLog.Info($"Mingal Tunnel {typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)} started{(IsAdmin ? "" : " (without Administrator)")}.");
+        AppLog.Info($"Moonlight Tunneling {typeof(MainViewModel).Assembly.GetName().Version?.ToString(3)} started{(IsAdmin ? "" : " (without Administrator)")}.");
 
         foreach (var p in ProfileStore.LoadAll()) Profiles.Add(new ProfileItem(p));
         ActiveProfile = Profiles.FirstOrDefault(p => p.Model.Id == Settings.ActiveProfileId) ?? Profiles.FirstOrDefault();
@@ -394,7 +401,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (!IsAdmin)
         {
-            if (interactive) Inform("The tunnel needs Mingal Tunnel running as Administrator (that's what creates the virtual network adapter). Open it from the installer's shortcut.", MessageBoxImage.Warning);
+            if (interactive) Inform("The tunnel needs Moonlight Tunneling running as Administrator (that's what creates the virtual network adapter). Open it from the installer's shortcut.", MessageBoxImage.Warning);
             return;
         }
         var profile = ActiveProfile?.Model;
@@ -407,7 +414,7 @@ public sealed class MainViewModel : ObservableObject
         var exe = SingBoxBinary.Locate(Settings.SingBoxPathOverride);
         if (exe == null)
         {
-            var msg = "sing-box.exe not found. Reinstall Mingal Tunnel or set its path in Settings.";
+            var msg = "sing-box.exe not found. Reinstall Moonlight Tunneling or set its path in Settings.";
             AppLog.Error(msg);
             if (interactive) Inform(msg, MessageBoxImage.Error);
             return;
@@ -436,7 +443,7 @@ public sealed class MainViewModel : ObservableObject
                     : Settings.LegacyDisabled && ex.Processes.All(p => p.Path.Contains("Discord Single-Tunneling", StringComparison.OrdinalIgnoreCase));
                 if (!kill)
                 {
-                    if (!interactive) Notify?.Invoke("Mingal Tunnel", "Another sing-box is already running; the tunnel was not started.");
+                    if (!interactive) Notify?.Invoke("Moonlight Tunneling", "Another sing-box is already running; the tunnel was not started.");
                     return;
                 }
                 foreach (var p in ex.Processes)
@@ -458,7 +465,7 @@ public sealed class MainViewModel : ObservableObject
             catch (Exception ex)
             {
                 if (interactive) Inform(ex.Message, MessageBoxImage.Error);
-                else Notify?.Invoke("Mingal Tunnel", ex.Message);
+                else Notify?.Invoke("Moonlight Tunneling", ex.Message);
                 return;
             }
         }
@@ -553,7 +560,7 @@ public sealed class MainViewModel : ObservableObject
         }
         if (!IsAdmin)
         {
-            if (interactive) Inform("The boost needs Mingal Tunnel running as Administrator, because it has to turn the tunnel on.", MessageBoxImage.Warning);
+            if (interactive) Inform("The boost needs Moonlight Tunneling running as Administrator, because it has to turn the tunnel on.", MessageBoxImage.Warning);
             return;
         }
         if (ActiveProfile == null)
@@ -979,7 +986,7 @@ public sealed class MainViewModel : ObservableObject
         {
             Settings.LegacyMigrationHandled = true;
             SaveNow();
-            AppLog.Info("Discord Tunneling migration declined; if both run at once, Mingal asks before turning on.");
+            AppLog.Info("Discord Tunneling migration declined; if both run at once, Moonlight Tunneling asks before turning on.");
             return;
         }
 
@@ -1052,7 +1059,7 @@ public sealed class MainViewModel : ObservableObject
         var exe = SingBoxBinary.Locate(Settings.SingBoxPathOverride);
         if (exe == null)
         {
-            SingBoxInfo = Settings.SingBoxPathOverride != null ? "File not found." : "Bundled sing-box not found; reinstall Mingal Tunnel.";
+            SingBoxInfo = Settings.SingBoxPathOverride != null ? "File not found." : "Bundled sing-box not found; reinstall Moonlight Tunneling.";
             return;
         }
         var v = await SingBoxBinary.GetVersionAsync(exe);
@@ -1087,7 +1094,7 @@ public sealed class MainViewModel : ObservableObject
         if (Settings.TrayHintShown) return;
         Settings.TrayHintShown = true;
         QueueSave();
-        Notify?.Invoke("Mingal Tunnel is still running", "The tunnel keeps running from the tray. To quit, right-click the icon > Exit.");
+        Notify?.Invoke("Moonlight Tunneling is still running", "The tunnel keeps running from the tray. To quit, right-click the icon > Exit.");
     }
 
     private void QueueSave()
@@ -1106,15 +1113,15 @@ public sealed class MainViewModel : ObservableObject
     {
         var owner = OwnerProvider();
         var r = owner is { IsVisible: true }
-            ? MessageBox.Show(owner, text, "Mingal Tunnel", MessageBoxButton.YesNo, icon)
-            : MessageBox.Show(text, "Mingal Tunnel", MessageBoxButton.YesNo, icon);
+            ? MessageBox.Show(owner, text, "Moonlight Tunneling", MessageBoxButton.YesNo, icon)
+            : MessageBox.Show(text, "Moonlight Tunneling", MessageBoxButton.YesNo, icon);
         return r == MessageBoxResult.Yes;
     }
 
     private void Inform(string text, MessageBoxImage icon = MessageBoxImage.Information)
     {
         var owner = OwnerProvider();
-        if (owner is { IsVisible: true }) MessageBox.Show(owner, text, "Mingal Tunnel", MessageBoxButton.OK, icon);
-        else MessageBox.Show(text, "Mingal Tunnel", MessageBoxButton.OK, icon);
+        if (owner is { IsVisible: true }) MessageBox.Show(owner, text, "Moonlight Tunneling", MessageBoxButton.OK, icon);
+        else MessageBox.Show(text, "Moonlight Tunneling", MessageBoxButton.OK, icon);
     }
 }
