@@ -17,34 +17,19 @@
   <img src="docs/screenshots/apps.png" width="880" alt="Moonlight Tunneling">
 </p>
 
-Moonlight Tunneling works with any WireGuard VPN, including ones with no built-in split tunneling (Proton VPN free, Mullvad, your own server). It started as a way to get **Discord Go Live** working without sending the whole PC through the VPN, and it works for any app: browsers, games, launchers.
+Moonlight Tunneling works with any WireGuard VPN, including ones with no built-in split tunneling (Proton VPN free, Mullvad, your own server). Tunnel Discord, a browser, a game or any other program, and leave everything else untouched.
 
 ## Features
 
 | | |
 |---|---|
-| 🌙 **Discord Go Live boost** | One click gives Discord the VPN while it signs in, then hands it back to your normal connection. |
 | 🎯 **Per process, TCP and UDP** | Voice, video and game traffic go through the tunnel too, not just web requests. |
 | ⚡ **Applies instantly** | Tick or untick an app and its new connections follow within seconds, without restarting the tunnel. |
 | 🔄 **Survives updates** | Discord, Slack (`app-*` folders) and Microsoft Store apps stay tunneled after they update. |
 | 🛡️ **Per-app kill-switch** | Optional. If the tunnel drops, that app loses internet instead of leaking onto your normal connection. |
 | 🌐 **No IPv6 leaks** | If your network has IPv6 and the VPN doesn't, tunneled apps' IPv6 is blocked. |
 | 🔁 **Reconnects on its own** | Recovers from crashes, network switches (Ethernet ↔ Wi-Fi) and a silent VPN, with a retry limit. |
-| 🚀 **Starts with Windows** | No UAC prompt at logon. It can run the boost or open your apps once the tunnel is up. |
-
-## Discord Go Live boost
-
-Discord decides whether Go Live is available at the moment it signs in, so it only needs the VPN for that moment. That's why this old trick works: connect a VPN, open Discord, disconnect the VPN, and you can still stream.
-
-**Go Live boost** does that in one click:
-
-1. It turns the tunnel on and reopens Discord through it.
-2. It waits until Discord has signed in through the VPN, then holds for **20 seconds**. The hold time is configurable, and **Release now** skips it.
-3. It hands Discord back to your normal connection and turns the tunnel off if no other app needs it.
-
-After that, the call runs at full speed with no tunnel in the way, and it stays that way until you close Discord.
-
-If you'd rather keep Discord tunneled all the time, tick it in the list and ignore the boost. The boost won't run while Discord's kill-switch is on, because the kill-switch cuts Discord off exactly when the tunnel is released.
+| 🚀 **Starts with Windows** | No UAC prompt at logon. It opens your chosen apps once the tunnel is up. |
 
 <table>
   <tr>
@@ -52,7 +37,7 @@ If you'd rather keep Discord tunneled all the time, tick it in the list and igno
     <td width="50%"><img src="docs/screenshots/profiles.png" alt="VPN profiles"><br><sub>Keep as many WireGuard profiles as you like. Private keys are encrypted for your Windows user.</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Startup, reconnection, the boost, the local proxy port and the engine.</sub></td>
+    <td colspan="2"><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Startup, reconnection, the local proxy port and the engine.</sub></td>
   </tr>
 </table>
 
@@ -63,7 +48,7 @@ If you'd rather keep Discord tunneled all the time, tick it in the list and igno
 1. Download `MoonlightTunneling-Setup-x.y.z.exe` from [Releases](https://github.com/himingal/moonlight-tunneling/releases/latest).
 2. Install it and open it. Windows asks for Administrator rights because the app creates a virtual network adapter.
 3. On the **VPN profiles** tab, click **Import .conf**. For Proton, go to account.protonvpn.com → Downloads → WireGuard configuration and pick a server.
-4. Click **Go Live boost** for Discord, or tick the apps you want tunneled and click **Turn tunnel on**.
+4. Tick the apps you want tunneled and click **Turn tunnel on**.
 
 Upgrading from Mingal Tunnel? Install on top. It closes the old version, and on first start Moonlight Tunneling moves your profiles, settings, autostart and kill-switch rules over to the new name.
 

@@ -97,16 +97,6 @@ public sealed class AppRowViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Flips the tunnel rule without touching the saved preference or logging a
-    /// user action - used by the Go Live boost, which puts the app back after.
-    /// </summary>
-    public void SetEnabledTemporarily(bool value)
-    {
-        Model.Enabled = value;
-        OnPropertyChanged(nameof(Enabled));
-    }
-
     public string LiveText { get => _liveText; private set => Set(ref _liveText, value); }
     public Brush LiveBrush { get => _liveBrush; private set => Set(ref _liveBrush, value); }
     public bool IsRunning { get; private set; }

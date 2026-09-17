@@ -23,8 +23,8 @@ public partial class App : Application
 
         bool devRender = false;
 #if DEBUG
-        // Screenshot/stress renders run beside a real installed copy.
-        devRender = e.Args.Contains("--snapshot") || e.Args.Contains("--stress-log");
+        // Screenshot/stress renders and --dev runs work beside a real installed copy.
+        devRender = e.Args.Contains("--snapshot") || e.Args.Contains("--stress-log") || e.Args.Contains("--dev");
 #endif
         _instance = new Mutex(true, devRender ? "MoonlightTunneling.DevRender." + Environment.ProcessId : "MoonlightTunneling.SingleInstance", out bool first);
         if (!first)

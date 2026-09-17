@@ -191,15 +191,16 @@
         </Setter>
     </Style>
 
+    <!-- No Cursor setter on the TabItem itself: the tab's content inherits it
+         through the logical tree and every card in the page would show a hand. -->
     <Style TargetType="TabItem">
-        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Foreground" Value="{StaticResource SubInk}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Border x:Name="Bd" BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="4,8" Margin="0,0,22,-1">
+                    <Border x:Name="Bd" BorderThickness="0,0,0,2" BorderBrush="Transparent" Background="Transparent" Padding="4,8" Margin="0,0,22,-1" Cursor="Hand">
                         <ContentPresenter ContentSource="Header" />
                     </Border>
                     <ControlTemplate.Triggers>

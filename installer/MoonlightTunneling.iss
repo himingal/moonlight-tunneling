@@ -1,11 +1,11 @@
-﻿; ============================================================
+; ============================================================
 ;  Moonlight Tunneling - Inno Setup script
 ;  Build with build\publish.ps1 (publishes the app into dist\app
 ;  and then compiles this file).
 ; ============================================================
 
 #define MyAppName "Moonlight Tunneling"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.0-stable"
 #define MyAppPublisher "mingal"
 #define MyAppExeName "MoonlightTunneling.exe"
 
